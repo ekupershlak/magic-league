@@ -37,9 +37,11 @@ def fetch():
     a = cycle.col_values(3)[1:]
     b = cycle.col_values(4)[1:]
     winners = cycle.col_values(7)[1:]
+    if i >= 3:
+      for pa, pb, winner in zip(a, b, winners):
+        total_mismatch[pa] += partial_scores[pb] - partial_scores[pa]
+        total_mismatch[pb] += partial_scores[pa] - partial_scores[pb]
     for pa, pb, winner in zip(a, b, winners):
-      total_mismatch[pa] += partial_scores[pb] - partial_scores[pa]
-      total_mismatch[pb] += partial_scores[pa] - partial_scores[pb]
       partial_scores[pa] += {
         pa: 3,
         "Didn't play:{}-{}".format(pa, pb): 1,
@@ -54,7 +56,7 @@ def fetch():
     groups = [list(group) for score, group in
               itertools.groupby(sorted(zip(scores, names), reverse=True),
                                 key=lambda (s, n): s)]
-  return groups, previous_pairings
+  return groups, previous_pairings, total_mismatch
 
 def pop_pairup(groups):
   for group in groups:
@@ -75,7 +77,8 @@ def pair(groups, previous_pairings):
       pairup = pop_pairup(groups)
       current.append(pairup)
     random.shuffle(current)
-    print 'permuting {} things'.format(len(current))
+    if len(current) > 16:
+      raise CouldNotPairError()
     for permutation in take(limit, xpermutations.xpermutations(current)):
       group_pairings = []
       while permutation:
@@ -98,14 +101,24 @@ def pair(groups, previous_pairings):
     else:
       raise CouldNotPairError('Could not pair')
 
-def pair3(groups, previous_pairings):
+def pair3(groups, previous_pairings, total_mismatch):
   previous_pairings = copy.deepcopy(previous_pairings)
+  total_mismatch = copy.deepcopy(total_mismatch)
+  acc = []
   for i in range(1, 4):
     pairings = pair(groups, previous_pairings)
-    yield pairings
-    previous_pairings |= set((pa, pb) for (sa, pa), (sb, pb) in pairings)
-    previous_pairings |= set((pb, pa) for (sa, pa), (sb, pb) in pairings)
+    for (sa, pa), (sb, pb) in pairings:
+      previous_pairings.add((pa, pb))
+      previous_pairings.add((pb, pa))
+      total_mismatch[pa] += sb - sa
+      total_mismatch[pb] += sa - sb
+    acc.append(pairings)
+  return sum(mismatch**2 for mismatch in total_mismatch.values()), acc
 
 
 def main():
-  groups, previous_pairings = fetch()
+  groups, previous_pairings, total_mismatch = fetch()
+  best = min(pair3(groups, previous_pairings, tm) for i in range(30))
+  for round in best[0]:
+    for (sa, pa), (sb, pb) in round:
+        print '{}\t{}'.format(pa, pb)
