@@ -234,7 +234,6 @@ groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
 players = player_id_mapping(previous_pairings)
 scores = {players[name]: score for score, name in itertools.chain(*groups)}
 
-
 s = z3.Solver()
 slots = MakeSlots(s, len(players), 1)
 score = MakeScoreFunction(s, scores)
@@ -244,14 +243,18 @@ NoRepeatMatches(s, slots, played)
 NoRepeatByes(s, slots, previous_pairings, players)
 metric1 = PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)
 
-def PrintModel(slots, players, model):
+def PrintModel(slots, players, score, model):
   reverse_players = {number: name for name, number in players.items()}
   for r, round_slots in enumerate(slots):
     print 'Round', r + 1
     for n, slot in enumerate(round_slots):
       if odd(n):
-        print '{:>20} vs. {:<20}'.format(
-          reverse_players[model.evaluate(slot).as_long()],
-          reverse_players[model.evaluate(round_slots[n - 1]).as_long()])
+        player = slot
+        opponent = round_slots[n - 1]
+        print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
+          '({})'.format(model.evaluate(score(player))),
+          reverse_players[model.evaluate(player).as_long()],
+          reverse_players[model.evaluate(opponent).as_long()],
+          '({})'.format(model.evaluate(score(opponent))))
   print
   print 'Badness:', model.evaluate(metric1)
