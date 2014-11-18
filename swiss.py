@@ -201,7 +201,8 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
       if odd(n):
         player = slot
         opponent = round_slots[n - 1]
-        s.add(round_mismatch[player] == round_mismatch[opponent] ==
+        s.add(round_mismatch[player] == round_mismatch[opponent],
+              round_mismatch[player] ==
               Abs(score_func(player) - score_func(opponent)))
     if odd(len(round_slots)):
       s.add(round_mismatch[-1] == score_func(round_slots[-1]))
