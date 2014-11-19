@@ -168,12 +168,7 @@ def MakePlayedFunction(s, previous_pairings, players):
   played = z3.Function('played', z3.IntSort(), z3.IntSort(), z3.BoolSort())
 
   for (pa, pb) in previous_pairings:
-    #print 'Added', played(players[pa], players[pb])
     s.add(played(players[pa], players[pb]))
-    #print 'Added', played(players[pb], players[pa])
-    s.add(played(players[pb], players[pa]))
-  #a, b = z3.Ints('a b')
-  #s.add(z3.ForAll([a, b], played(a, b) == played(b, a)))
   return played
 
 def NoRepeatMatches(s, slots, played):
