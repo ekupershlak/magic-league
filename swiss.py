@@ -193,21 +193,20 @@ def NoRepeatByes(s, slots, previous_pairings, players):
 # Metric 1
 def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
   mismatches = [
-    z3.Array('abs_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
+    z3.Function('abs_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
     for r in range(len(slots))]
   for round_slots, round_mismatch in zip(slots, mismatches):
     for n, slot in enumerate(round_slots):
       if odd(n):
         player = slot
         opponent = round_slots[n - 1]
-        s.add(round_mismatch[player] == round_mismatch[opponent],
-              round_mismatch[player] ==
-              Abs(score_func(player) - score_func(opponent)))
+        s.add(round_mismatch(opponent) == round_mismatch(player),
+              round_mismatch(player) == score_func(opponent) - score_func(player))
     if odd(len(round_slots)):
       s.add(round_mismatch[-1] == score_func(round_slots[-1]))
 
-  def AbsoluteMismatchSum(index):
-    return z3.Sum(*[round_mismatch[index] for round_mismatch in mismatches])
+  def AbsoluteMismatchSum(player):
+    return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
 
   return z3.Sum(*[AbsoluteMismatchSum(player_id) ** 2
                   for player_id in players.values()])
