@@ -168,6 +168,8 @@ def MakePlayedFunction(s, previous_pairings, players):
 
   for (pa, pb) in previous_pairings:
     s.add(played(players[pa], players[pb]))
+  for id_a in players.values():
+    s.add(played(id_a, id_a))
   return played
 
 def NoRepeatMatches(s, slots, played):
