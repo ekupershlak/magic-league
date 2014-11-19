@@ -253,9 +253,9 @@ def PrintModel(slots, players, score, model):
         player = slot
         opponent = round_slots[n - 1]
         print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
-          '({})'.format(model.evaluate(score(player))),
-          reverse_players[model.evaluate(player).as_long()],
+          '({})'.format(model.evaluate(score(opponent))),
           reverse_players[model.evaluate(opponent).as_long()],
-          '({})'.format(model.evaluate(score(opponent))))
+          reverse_players[model.evaluate(player).as_long()],
+          '({})'.format(model.evaluate(score(player))))
   print
   print 'Badness:', model.evaluate(metric1)
