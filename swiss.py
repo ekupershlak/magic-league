@@ -25,6 +25,9 @@ def take(n, iterable):
 def odd(n):
   return n % 2 == 1
 
+def even(n):
+  return n % 2 == 0
+
 class CouldNotPairError(Exception):
   """Could not pair."""
 
