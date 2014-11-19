@@ -190,17 +190,8 @@ def NoRepeatByes(s, slots, previous_pairings, players):
   for player in previously_byed:
     s.add(slots[-1][-1] != players[player])
 
-def player_id_mapping(previous_pairings):
-  all_names = (set(pair[0] for pair in previous_pairings) |
-               set(pair[1] for pair in previous_pairings))
-  all_names -= set([BYE])
-  return dict(zip(sorted(all_names), itertools.count()))
-
 # Metric 1
 def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
-  def Abs(x):
-    return z3.If(x >= 0, x, -x)
-
   mismatches = [
     z3.Array('abs_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
     for r in range(len(slots))]
