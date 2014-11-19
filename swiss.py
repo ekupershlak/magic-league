@@ -161,6 +161,13 @@ def SortSlotsByScore(s, slots, score):
       if n not in (0, 1) and not (even(n) and n == len(round_slots) - 1):
         # Each player <= player above in same column.
         s.add(round_slots[n] <= round_slots[n - 2])
+      if r != 0:
+        s.add(z3.Implies(
+          slots[r][n] > slots[r-1][n],
+          z3.Or([slots[r][i] < slots[r-1][i]
+                 for i in range(n + 1, len(round_slots))])))
+    # The rounds themselves are lexicographically ordered,
+    # high-to-low. The last slot is the most significant.
 
 
 def MakePlayedFunction(s, previous_pairings, players):
