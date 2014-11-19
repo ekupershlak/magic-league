@@ -10,7 +10,6 @@ import xpermutations
 from mathsat import *
 import z3
 
-
 sheets_account = 'chrisconnett@gmail.com'
 sheets_password = 'fyiyjhehvjmrongv'
 sheets_spreadsheet = 'magic-ny KTK Sealed League'
@@ -196,7 +195,8 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
         player = slot
         opponent = round_slots[n - 1]
         s.add(round_mismatch(opponent) == round_mismatch(player),
-              round_mismatch(player) == score_func(opponent) - score_func(player))
+              round_mismatch(player) ==
+              score_func(opponent) - score_func(player))
     if odd(len(round_slots)):
       s.add(round_mismatch[-1] == score_func(round_slots[-1]))
 
