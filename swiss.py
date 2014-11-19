@@ -153,8 +153,13 @@ def SortSlotsByScore(s, slots, score):
   for r, round_slots in enumerate(slots):
     for n, slot in enumerate(round_slots):
       # Sorted
-      if n != 0:
-        s.add(score(round_slots[n]) <= score(round_slots[n - 1]))
+      if odd(n):
+        # Right-column leq left-column opponent
+        s.add(round_slots[n] <= round_slots[n - 1])
+      elif n not in (0, len(round_slots) - 1):
+        # Left-column leq next higher player (non-increasing matches)
+        s.add(round_slots[n] <= round_slots[n - 2])
+
 
 def MakePlayedFunction(s, previous_pairings, players):
   played = z3.Function('played', z3.IntSort(), z3.IntSort(), z3.BoolSort())
@@ -232,8 +237,10 @@ groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
   file('dat'))
 
 
-players = player_id_mapping(previous_pairings)
-scores = {players[name]: score for score, name in itertools.chain(*groups)}
+scores = {id: score for (id, (score, name)) in
+          zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
+players = {name: id for (id, (score, name)) in
+           zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 
 s = z3.Solver()
 slots = MakeSlots(s, len(players), 1)
