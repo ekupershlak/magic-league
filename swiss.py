@@ -157,10 +157,10 @@ def SortSlotsByScore(s, slots, score):
     for n, slot in enumerate(round_slots):
       # Sorted
       if odd(n):
-        # Right-column leq left-column opponent
+        # Right-column <= left-column opponent.
         s.add(round_slots[n] <= round_slots[n - 1])
-      elif n not in (0, len(round_slots) - 1):
-        # Left-column leq next higher player (non-increasing matches)
+      if n not in (0, 1) and not (even(n) and n == len(round_slots) - 1):
+        # Each player <= player above in same column.
         s.add(round_slots[n] <= round_slots[n - 2])
 
 
