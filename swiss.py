@@ -238,7 +238,7 @@ players = {name: id for (id, (score, name)) in
 s = z3.Solver()
 slots = MakeSlots(s, len(players), 1)
 score = MakeScoreFunction(s, scores)
-# SortSlotsByScore(s, slots, score)
+SortSlotsByScore(s, slots, score)
 played = MakePlayedFunction(s, previous_pairings, players)
 NoRepeatMatches(s, slots, played)
 NoRepeatByes(s, slots, previous_pairings, players)
