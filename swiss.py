@@ -170,17 +170,39 @@ def SortSlotsByScore(s, slots, score):
     # high-to-low. The last slot is the most significant.
 
 
-def MakePlayedFunction(s, previous_pairings, players):
-  played = z3.Function('played', z3.IntSort(), z3.IntSort(), z3.BoolSort())
+def MakePlayedFunction(s, slots, previous_pairings, players):
+  played = z3.Function('played_0', z3.IntSort(), z3.IntSort(), z3.BoolSort())
 
   for (pa, pb) in previous_pairings:
-    s.add(played(players[pa], players[pb]))
+    # Previous cycles' pairings
+    if pa > pb:
+      s.add(played(players[pa], players[pb]))
   for id_a in players.values():
+    # Players have always played themselves (cannot play themselves).
     s.add(played(id_a, id_a))
-  return played
 
-def NoRepeatMatches(s, slots, played):
+  played_funcs = [played]
   for r, round_slots in enumerate(slots):
+    if r == 0:
+      continue
+    # Matches from earlier rounds count as played for later rounds.
+    played_prime = z3.Function('played_' + str(r),
+                               z3.IntSort(), z3.IntSort(), z3.BoolSort())
+    x, y = z3.Ints('x y')
+    # TODO: Turn the ForAll into [0, 46) explicitly.
+    s.add(z3.ForAll([x, y], z3.Implies(played_funcs[-1](x, y),
+                                       played_prime(x, y))))
+    for n, slot in enumerate(round_slots):
+      if odd(n):
+        s.add(played_prime(slots[r-1][n-1], slots[r-1][n]))
+    # TODO: If pairing more than 3 rounds, keep adding cross-round odd matches.
+    played_funcs.append(played_prime)
+
+  return played_funcs
+
+def NoRepeatMatches(s, slots, played_funcs):
+  for r, round_slots in enumerate(slots):
+    played = played_funcs[r]
     for n, slot in enumerate(round_slots):
       if odd(n):
         s.add(z3.Not(played(slots[r][n-1], slots[r][n])))
