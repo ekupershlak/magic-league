@@ -128,6 +128,14 @@ def pair3(groups, previous_pairings, total_mismatch):
     acc.append(pairings)
   return sum(mismatch**2 for mismatch in total_mismatch.values()), acc
 
+def PermutationPair():
+  best = min(pair3(groups, previous_pairings, tm) for i in range(30))
+  for round in best[0]:
+    for (sa, pa), (sb, pb) in round:
+        print '{}\t{}'.format(pa, pb)
+
+# SMT Based Solver below
+
 def MakeSlots(s, n_players, r_rounds):
   """Creates output pairing variables."""
   slots = []
@@ -218,7 +226,7 @@ def NoRepeatByes(s, slots, previous_pairings, players):
 # Metric 1
 def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
   mismatches = [
-    z3.Function('abs_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
+    z3.Function('abs_mismatch_' + str(r), z3.IntSort(), z3.RealSort())
     for r in range(len(slots))]
   for round_slots, round_mismatch in zip(slots, mismatches):
     for n, slot in enumerate(round_slots):
@@ -234,17 +242,10 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
   def AbsoluteMismatchSum(player):
     return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
 
-  return z3.Sum(*[AbsoluteMismatchSum(player_id) ** 2
+  return z3.Sum(*[AbsoluteMismatchSum(player_id)
                   for player_id in players.values()])
 
 def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
-  pass
-
-def main():
-  ## best = min(pair3(groups, previous_pairings, tm) for i in range(30))
-  ## for round in best[0]:
-  ##   for (sa, pa), (sb, pb) in round:
-  ##       print '{}\t{}'.format(pa, pb)
   pass
 
 import cPickle
