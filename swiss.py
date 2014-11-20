@@ -262,14 +262,27 @@ scores = {id: score for (id, (score, name)) in
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 
-s = z3.Solver()
-slots = MakeSlots(s, len(players), 1)
-score = MakeScoreFunction(s, scores)
-SortSlotsByScore(s, slots, score)
-played = MakePlayedFunction(s, previous_pairings, players)
-NoRepeatMatches(s, slots, played)
-NoRepeatByes(s, slots, previous_pairings, players)
-metric1 = PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)
+def Search(seconds=180):
+  s = z3.Solver()
+  slots = MakeSlots(s, len(players), 3)
+  score = MakeScoreFunction(s, scores)
+  SortSlotsByScore(s, slots, score)
+  played = MakePlayedFunction(s, slots, previous_pairings, players)
+  NoRepeatMatches(s, slots, played)
+  #NoRepeatByes(s, slots, previous_pairings, players)
+  metric1 = PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)
+
+  s.set('soft_timeout', seconds * 1000)
+  while s.check() == z3.sat:
+    model = s.model()
+    badness = model.evaluate(metric1)
+    print 'Badness: {}'.format(badness)
+    s.push()
+    s.add(metric1 < badness)
+  PrintModel(slots, players, score, model)
+  print
+  print 'Badness:', model.evaluate(metric1)
+
 
 def PrintModel(slots, players, score, model):
   reverse_players = {number: name for name, number in players.items()}
@@ -284,5 +297,3 @@ def PrintModel(slots, players, score, model):
           reverse_players[model.evaluate(opponent).as_long()],
           reverse_players[model.evaluate(player).as_long()],
           '({})'.format(model.evaluate(score(player))))
-  print
-  print 'Badness:', model.evaluate(metric1)
