@@ -311,7 +311,8 @@ def Search(seconds=180):
     if status == z3.sat:
       model = s.model()
       badness = model.evaluate(metric)
-      print 'Badness: {}'.format(badness)
+      print 'Badness: {}'.format(tuple(str(model.evaluate(m))
+                                       for m in all_metrics))
       s.push()
       s.add(metric < badness)
     elif status == z3.unsat:
@@ -332,7 +333,7 @@ def Search(seconds=180):
 
   PrintModel(slots, players, score, model)
   print
-  print 'Badness:', tuple(model[metric] for metric in all_metrics)
+  print 'Badness:', tuple(model.evaluate(m) for m in all_metrics)
 
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot] for round in slots for slot in round])
