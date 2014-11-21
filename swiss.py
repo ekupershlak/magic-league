@@ -236,8 +236,7 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
         s.add(round_mismatch(opponent) == round_mismatch(player),
               round_mismatch(player) ==
               score_func(opponent) - score_func(player))
-    if odd(len(round_slots)):
-      s.add(round_mismatch[-1] == score_func(round_slots[-1]))
+    # TODO: odd players in a round
 
   def AbsoluteMismatchSum(player):
     return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
@@ -259,7 +258,24 @@ def MismatchSum(s, slots, score_func):
   # TODO: odd players in a round
 
 def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
-  pass
+  mismatches = [
+    z3.Function('signed_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
+    for r in range(len(slots))]
+  for round_slots, round_mismatch in zip(slots, mismatches):
+    for n, slot in enumerate(round_slots):
+      if odd(n):
+        player = slot
+        opponent = round_slots[n - 1]
+        s.add(round_mismatch(opponent) == -round_mismatch(player),
+              round_mismatch(player) ==
+              score_func(opponent) - score_func(player))
+      # TODO: odd players in a round
+  def SignedMismatchSum(player):
+    return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
+
+  return z3.Sum([SignedMismatchSum(player_id) *
+                 SignedMismatchSum(player_id)
+                 for player_id in players.values()])
 
 import cPickle
 try:
@@ -283,28 +299,49 @@ def Search(seconds=180):
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
-  #metric1 = PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)
-  metric1 = MismatchSum(s, slots, score)
+  all_metrics = [MismatchSum(s, slots, score),
+                 PerPlayerSquaredSumMismatch(s, slots, players, score),
+                 PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)]
+  metrics = all_metrics[:]
 
   s.set('soft_timeout', seconds * 1000)
+  metric = metrics.pop(0)
   while True:
     status = s.check()
     if status == z3.sat:
       model = s.model()
-      badness = model.evaluate(metric1)
+      badness = model.evaluate(metric)
       print 'Badness: {}'.format(badness)
       s.push()
-      s.add(metric1 < badness)
+      s.add(metric < badness)
     elif status == z3.unsat:
       print 'OPTIMAL!'
-      break
+      s.pop()
+      try:
+        metric = metrics.pop(0)
+      except IndexError:
+        break
     else:
       print 'Time limit reached.'
       break
+  if status == z3.unsat:
+    for i, m in enumerate(AllOptimalModels(s, slots)):
+      if i % 100 == 0:
+        print i
+    print i
+
   PrintModel(slots, players, score, model)
   print
-  print 'Badness:', model.evaluate(metric1)
+  print 'Badness:', tuple(model[metric] for metric in all_metrics)
 
+def NegateModel(slots, model):
+  return z3.Or([slot != model[slot] for round in slots for slot in round])
+
+def AllOptimalModels(s, slots):
+  while s.check() == z3.sat:
+    model = s.model()
+    yield model
+    s.add(NegateModel(slots, model))
 
 def PrintModel(slots, players, score, model):
   reverse_players = {number: name for name, number in players.items()}
