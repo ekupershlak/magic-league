@@ -287,12 +287,20 @@ def Search(seconds=180):
   metric1 = MismatchSum(s, slots, score)
 
   s.set('soft_timeout', seconds * 1000)
-  while s.check() == z3.sat:
-    model = s.model()
-    badness = model.evaluate(metric1)
-    print 'Badness: {}'.format(badness)
-    s.push()
-    s.add(metric1 < badness)
+  while True:
+    status = s.check()
+    if status == z3.sat:
+      model = s.model()
+      badness = model.evaluate(metric1)
+      print 'Badness: {}'.format(badness)
+      s.push()
+      s.add(metric1 < badness)
+    elif status == z3.unsat:
+      print 'OPTIMAL!'
+      break
+    else:
+      print 'Time limit reached.'
+      break
   PrintModel(slots, players, score, model)
   print
   print 'Badness:', model.evaluate(metric1)
