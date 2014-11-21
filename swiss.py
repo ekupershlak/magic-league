@@ -318,6 +318,7 @@ def Search(seconds=180):
     elif status == z3.unsat:
       print 'OPTIMAL!'
       s.pop()
+      s.add(metric == badness)
       try:
         metric = metrics.pop(0)
       except IndexError:
