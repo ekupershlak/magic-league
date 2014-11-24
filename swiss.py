@@ -1,15 +1,12 @@
-import copy
 import collections
-import pdb
+import copy
 import gspread
 import itertools
+import password
 import random
 import sys
 import xpermutations
-
 import z3
-
-import password
 
 sheets_account = 'chrisconnett@gmail.com'
 sheets_password = password.sheets_password
