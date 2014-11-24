@@ -7,11 +7,12 @@ import random
 import sys
 import xpermutations
 
-from mathsat import *
 import z3
 
+import password
+
 sheets_account = 'chrisconnett@gmail.com'
-sheets_password = 'REVOKED'
+sheets_password = password.sheets_password
 sheets_spreadsheet = 'magic-ny KTK Sealed League'
 n = 3
 limit = 40320
