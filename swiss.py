@@ -11,7 +11,7 @@ from mathsat import *
 import z3
 
 sheets_account = 'chrisconnett@gmail.com'
-sheets_password = 'fyiyjhehvjmrongv'
+sheets_password = 'REVOKED'
 sheets_spreadsheet = 'magic-ny KTK Sealed League'
 n = 3
 limit = 40320
