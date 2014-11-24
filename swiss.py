@@ -11,7 +11,8 @@ import z3
 sheets_account = 'chrisconnett@gmail.com'
 sheets_password = password.sheets_password
 sheets_spreadsheet = 'magic-ny KTK Sealed League'
-n = 3
+cycle_to_pair = 5
+n = cycle_to_pair - 1
 limit = 40320
 BYE = 'BYE'
 
@@ -28,10 +29,13 @@ def even(n):
 class CouldNotPairError(Exception):
   """Could not pair."""
 
-def fetch():
+def GetSpreadsheet():
   session = gspread.login(sheets_account, sheets_password)
-  spreadsheet = session.open(sheets_spreadsheet)
+  return session.open(sheets_spreadsheet)
 
+
+def Fetch():
+  spreadsheet = GetSpreadsheet()
   standings = spreadsheet.worksheet('Standings')
   names = standings.col_values(2)[1:]
   scores = [int(s) for s in standings.col_values(4)[1:]]
@@ -67,6 +71,18 @@ def fetch():
               itertools.groupby(sorted(zip(scores, names), reverse=True),
                                 key=lambda (s, n): s)]
   return groups, previous_pairings, total_mismatch, player_mismatch
+
+def Writeback(pairings):
+  spreadsheet = GetSpreadsheet()
+  ws_name = 'Cycle ' + str(cycle_to_pair)
+  output = spreadsheet.worksheet(ws_name)
+  pairings_range = output.range('C2:D' + str(len(pairings) + 1))
+  for cell, player in zip(
+      pairings_range, (player for row in pairings for player in row)):
+    cell.value = player
+  print 'Writing to', ws_name
+  output.update_cells(pairings_range)
+
 
 def pop_pairup(groups):
   for group in groups:
@@ -279,7 +295,7 @@ import cPickle
 try:
   file('dat')
 except IOError:
-  cPickle.dump(fetch(), file('dat', 'w'))
+  cPickle.dump(Fetch(), file('dat', 'w'))
 groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
   file('dat'))
 
@@ -340,6 +356,7 @@ def Search(seconds=180, enumerate_all=False):
   PrintModel(slots, players, score, model)
   print
   print 'Badness:', tuple(model.evaluate(m) for m in all_metrics)
+  return list(ModelPlayers(slots, players, score, model))
 
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot] for round in slots for slot in round])
@@ -363,3 +380,13 @@ def PrintModel(slots, players, score, model):
           reverse_players[model.evaluate(opponent).as_long()],
           reverse_players[model.evaluate(player).as_long()],
           '({})'.format(model.evaluate(score(player))))
+
+def ModelPlayers(slots, players, score, model):
+  reverse_players = {number: name for name, number in players.items()}
+  for r, round_slots in enumerate(slots):
+    for n, slot in enumerate(round_slots):
+      if odd(n):
+        player = slot
+        opponent = round_slots[n - 1]
+        yield (reverse_players[model.evaluate(opponent).as_long()],
+               reverse_players[model.evaluate(player).as_long()])
