@@ -254,7 +254,7 @@ def MismatchSum(s, slots, score_func):
         opponent = round_slots[n - 1]
         term = score_func(opponent) - score_func(player)
         terms.append(term)
-  return z3.Sum(terms)
+  return z3.Sum(terms), z3.Sum([t * t for t in terms])
   # TODO: odd players in a round
 
 def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
@@ -299,9 +299,12 @@ def Search(seconds=180):
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
-  all_metrics = [MismatchSum(s, slots, score),
+  linear_mismatch, squared_mismatch = MismatchSum(s, slots, score)
+  all_metrics = [linear_mismatch,
+                 squared_mismatch,
+                 PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score),
                  PerPlayerSquaredSumMismatch(s, slots, players, score),
-                 PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score)]
+                 ]
   metrics = all_metrics[:]
 
   s.set('soft_timeout', seconds * 1000)
