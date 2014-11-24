@@ -291,7 +291,7 @@ scores = {id: score for (id, (score, name)) in
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 
-def Search(seconds=180):
+def Search(seconds=180, enumerate_all=False):
   s = z3.Solver()
   slots = MakeSlots(s, len(players), 3)
   score = MakeScoreFunction(s, scores)
@@ -328,12 +328,16 @@ def Search(seconds=180):
         break
     else:
       print 'Time limit reached.'
+      s.pop()
+      s.add(metric <= badness)
       break
-  if status == z3.unsat:
+
+  if enumerate_all and status in (z3.unsat, z3.unknown):
+    total = 0
     for i, m in enumerate(AllOptimalModels(s, slots)):
-      if i % 100 == 0:
-        print i
-    print i
+      print i
+      total += 1
+    print 'Total solutions found:', total
 
   PrintModel(slots, players, score, model)
   print
