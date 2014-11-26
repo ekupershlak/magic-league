@@ -343,6 +343,7 @@ def Search(seconds=180, enumerate_all=False):
       s.add(metric == badness)
       try:
         metric = metrics.pop(0)
+        s.add(metric < model.evaluate(metric))
       except IndexError:
         break
     else:
