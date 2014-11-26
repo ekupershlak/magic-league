@@ -59,10 +59,12 @@ def Fetch():
       partial_scores[pa] += {
         pa: 3,
         "Didn't play:{}-{}".format(pa, pb): 1,
+        '': 1,
         pb: 0}[winner]
       partial_scores[pb] += {
         pb: 3,
         "Didn't play:{}-{}".format(pa, pb): 1,
+        '': 1,
         pa: 0}[winner]
     previous_pairings |= set(zip(a, b))
     previous_pairings |= set(zip(b, a))
