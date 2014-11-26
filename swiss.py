@@ -5,6 +5,7 @@ import itertools
 import password
 import random
 import sys
+import time
 import xpermutations
 import z3
 
@@ -327,7 +328,7 @@ def Search(seconds=180, enumerate_all=False):
   deadline = time.time() + seconds
   metric = metrics.pop(0)
   while True:
-    s.set('soft_timeout', (deadline - time.time()) * 1000)
+    s.set('soft_timeout', int((deadline - time.time()) * 1000))
     status = s.check()
     if status == z3.sat:
       model = s.model()
@@ -356,7 +357,7 @@ def Search(seconds=180, enumerate_all=False):
     for i, m in enumerate(AllOptimalModels(s, slots)):
       print i
       total += 1
-      if random.random() < 1.0 / i:
+      if random.random() < 1.0 / total:
         winner = m
     print 'Total solutions found:', total
 
@@ -371,7 +372,7 @@ def NegateModel(slots, model):
 def AllOptimalModels(s, slots, deadline=None):
   while True:
     if deadline:
-      s.set('soft_timeout', (deadline - time.time()) * 1000)
+      s.set('soft_timeout', int((deadline - time.time()) * 1000))
     if s.check() == z3.sat:
       model = s.model()
       yield model
