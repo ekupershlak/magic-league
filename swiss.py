@@ -324,9 +324,10 @@ def Search(seconds=180, enumerate_all=False):
                  ]
   metrics = all_metrics[:]
 
-  s.set('soft_timeout', seconds * 1000)
+  deadline = time.time() + seconds
   metric = metrics.pop(0)
   while True:
+    s.set('soft_timeout', (deadline - time.time()) * 1000)
     status = s.check()
     if status == z3.sat:
       model = s.model()
@@ -364,11 +365,16 @@ def Search(seconds=180, enumerate_all=False):
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot] for round in slots for slot in round])
 
-def AllOptimalModels(s, slots):
-  while s.check() == z3.sat:
-    model = s.model()
-    yield model
-    s.add(NegateModel(slots, model))
+def AllOptimalModels(s, slots, deadline=None):
+  while True:
+    if deadline:
+      s.set('soft_timeout', (deadline - time.time()) * 1000)
+    if s.check() == z3.sat:
+      model = s.model()
+      yield model
+      s.add(NegateModel(slots, model))
+    else:
+      break
 
 def PrintModel(slots, players, score, model):
   reverse_players = {number: name for name, number in players.items()}
