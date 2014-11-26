@@ -309,6 +309,7 @@ players = {name: id for (id, (score, name)) in
 
 def Search(seconds=180, enumerate_all=False):
   s = z3.Solver()
+  s.push()
   slots = MakeSlots(s, len(players), 3)
   score = MakeScoreFunction(s, scores)
   SortSlotsByScore(s, slots, score)
