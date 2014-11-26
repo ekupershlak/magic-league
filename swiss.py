@@ -350,17 +350,20 @@ def Search(seconds=180, enumerate_all=False):
       s.add(metric <= badness)
       break
 
+  winner = model
   if enumerate_all and status in (z3.unsat, z3.unknown):
     total = 0
     for i, m in enumerate(AllOptimalModels(s, slots)):
       print i
       total += 1
+      if random.random() < 1.0 / i:
+        winner = m
     print 'Total solutions found:', total
 
-  PrintModel(slots, players, score, model)
+  PrintModel(slots, players, score, winner)
   print
-  print 'Badness:', tuple(model.evaluate(m) for m in all_metrics)
-  return list(ModelPlayers(slots, players, score, model))
+  print 'Badness:', tuple(winner.evaluate(m) for m in all_metrics)
+  return list(ModelPlayers(slots, players, score, winner))
 
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot] for round in slots for slot in round])
