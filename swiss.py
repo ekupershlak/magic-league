@@ -199,7 +199,7 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
 
   for (pa, pb) in previous_pairings:
     # Previous cycles' pairings
-    if pa > pb:
+    if players[pa] > players[pb]:
       s.add(played(players[pa], players[pb]))
   for id_a in players.values():
     # Players have always played themselves (cannot play themselves).
