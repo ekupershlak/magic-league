@@ -185,10 +185,10 @@ def SortSlotsByScore(s, slots, score):
     for n, slot in enumerate(round_slots):
       # Sorted
       if odd(n):
-        # Right-column <= left-column opponent.
+        # W.l.o.g., right-column <= left-column opponent.
         s.add(round_slots[n] <= round_slots[n - 1])
-      if n not in (0, 1) and not (even(n) and n == len(round_slots) - 1):
-        # Each player <= player above in same column.
+      if n not in (0, 1) and even(n):
+        # W.l.o.g, left column sorted by id
         s.add(round_slots[n] <= round_slots[n - 2])
       if r != 0:
         s.add(z3.Implies(
