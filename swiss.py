@@ -312,7 +312,7 @@ scores = {id: score for (id, (score, name)) in
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 
-def Search(seconds=180, enumeration=120):
+def Search(seconds=180, enumeration=None):
   s = z3.Solver()
   s.push()
   slots = MakeSlots(s, len(players), 3)
@@ -330,7 +330,6 @@ def Search(seconds=180, enumeration=120):
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
-  enumeration_deadline = deadline + enumeration
   metric = metrics.pop(0)
   while True:
     s.set('soft_timeout', timeleft(deadline) * 1000)
@@ -364,9 +363,9 @@ def Search(seconds=180, enumeration=120):
       break
 
   winner = model
-  if enumeration_deadline and status in (z3.unsat, z3.unknown):
+  if enumeration and status in (z3.unsat, z3.unknown):
     total = 0
-    for i, m in enumerate(AllOptimalModels(s, slots, enumeration_deadline)):
+    for i, m in enumerate(AllOptimalModels(s, slots, deadline + enumeration)):
       print i
       total += 1
       if random.random() < 1.0 / total:
