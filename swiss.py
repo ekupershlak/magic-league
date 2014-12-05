@@ -218,7 +218,6 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
     played_prime = z3.Function('played_' + str(r),
                                z3.IntSort(), z3.IntSort(), z3.BoolSort())
     x, y = z3.Ints('x y')
-    # TODO: Turn the ForAll into [0, 46) explicitly.
     s.add([z3.Implies(played_funcs[-1](x, y), played_prime(x, y))
            for x in range(46) for y in range(46) if x > y])
     for n, slot in enumerate(round_slots):
