@@ -187,16 +187,21 @@ def SortSlotsByScore(s, slots, score):
       if odd(n):
         # W.l.o.g., right-column <= left-column opponent.
         s.add(round_slots[n] <= round_slots[n - 1])
-      if n not in (0, 1) and even(n):
-        # W.l.o.g, left column sorted by id
-        s.add(round_slots[n] <= round_slots[n - 2])
+      if n not in (0, 1):
+        if even(n):
+          # W.l.o.g, left column sorted by id
+          s.add(round_slots[n] <= round_slots[n - 2])
+          # W.l.o.g, in a two-row-neighborhood, left columns having
+          # equal score -> right columns ordered.
+          s.add(z3.Implies(score(round_slots[n]) == score(round_slots[n - 2]),
+                           round_slots[n + 1] <= round_slots[n - 1]))
+      # The rounds themselves are lexicographically ordered,
+      # high-to-low. The last slot is the most significant.
       if r != 0:
         s.add(z3.Implies(
           slots[r][n] > slots[r-1][n],
           z3.Or([slots[r][i] < slots[r-1][i]
                  for i in range(n + 1, len(round_slots))])))
-    # The rounds themselves are lexicographically ordered,
-    # high-to-low. The last slot is the most significant.
 
 
 def MakePlayedFunction(s, slots, previous_pairings, players):
