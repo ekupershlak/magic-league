@@ -1,5 +1,6 @@
 import collections
 import copy
+import datetime
 import gspread
 import itertools
 import password
@@ -26,6 +27,9 @@ def odd(n):
 
 def even(n):
   return n % 2 == 0
+
+def timeleft(deadline):
+  return int(deadline - time.time() + 0.5)
 
 class CouldNotPairError(Exception):
   """Could not pair."""
@@ -308,7 +312,7 @@ scores = {id: score for (id, (score, name)) in
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 
-def Search(seconds=180, enumerate_all=False):
+def Search(seconds=180, enumeration=120):
   s = z3.Solver()
   s.push()
   slots = MakeSlots(s, len(players), 3)
@@ -326,9 +330,10 @@ def Search(seconds=180, enumerate_all=False):
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
+  enumeration_deadline = deadline + enumeration
   metric = metrics.pop(0)
   while True:
-    s.set('soft_timeout', int((deadline - time.time()) * 1000))
+    s.set('soft_timeout', timeleft(deadline) * 1000)
     status = s.check()
     if status == z3.sat:
       model = s.model()
@@ -336,7 +341,13 @@ def Search(seconds=180, enumerate_all=False):
       print 'Badness: {}'.format(tuple(str(model.evaluate(m))
                                        for m in all_metrics))
       s.push()
-      s.add(metric < badness)
+      if timeleft(deadline) > 0:
+        print 'Time left:', str(datetime.timedelta(seconds=timeleft(deadline)))
+        s.add(metric < badness)
+      else:
+        print 'Time limit reached.'
+        s.add(metric == badness)
+        break
     elif status == z3.unsat:
       print 'OPTIMAL!'
       s.pop()
@@ -353,14 +364,14 @@ def Search(seconds=180, enumerate_all=False):
       break
 
   winner = model
-  if enumerate_all and status in (z3.unsat, z3.unknown):
+  if enumeration_deadline and status in (z3.unsat, z3.unknown):
     total = 0
-    for i, m in enumerate(AllOptimalModels(s, slots)):
+    for i, m in enumerate(AllOptimalModels(s, slots, enumeration_deadline)):
       print i
       total += 1
       if random.random() < 1.0 / total:
         winner = m
-    print 'Total solutions found:', total
+    print 'Total solutions found:', max(total, 1)
 
   PrintModel(slots, players, score, winner)
   print
@@ -373,7 +384,10 @@ def NegateModel(slots, model):
 def AllOptimalModels(s, slots, deadline=None):
   while True:
     if deadline:
-      s.set('soft_timeout', int((deadline - time.time()) * 1000))
+      if timeleft(deadline) > 0:
+        s.set('soft_timeout', timeleft(deadline) * 1000)
+      else:
+        return
     if s.check() == z3.sat:
       model = s.model()
       yield model
