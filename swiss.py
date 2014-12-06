@@ -272,15 +272,15 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
                  for player_id in players.values()])
 
 def MismatchSum(s, slots, score_func):
-  terms = []
   for r, round_slots in enumerate(slots):
+    terms = []
     for n, slot in enumerate(round_slots):
       if odd(n):
         player = slot
         opponent = round_slots[n - 1]
         term = score_func(opponent) - score_func(player)
         terms.append(term)
-  return z3.Sum(terms), z3.Sum([t * t for t in terms])
+    yield z3.Sum(terms), z3.Sum([t * t for t in terms])
   # TODO: odd players in a round
 
 def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
@@ -326,16 +326,19 @@ def Search(seconds=180, enumeration=None):
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
-  linear_mismatch, squared_mismatch = MismatchSum(s, slots, score)
-  all_metrics = [linear_mismatch,
-                 squared_mismatch,
-                 PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score),
-                 PerPlayerSquaredSumMismatch(s, slots, players, score),
-                 ]
+  all_metrics = []
+  mismatch_sum_result = list(MismatchSum(s, slots, score))
+  for linear_mismatch, _ in mismatch_sum_result:
+    all_metrics.append(linear_mismatch)
+  #for _, squared_mismatch in mismatch_sum_result:
+  #  all_metrics.append(squared_mismatch)
+  #all_metrics.append(
+  #  PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score))
+  #all_metrics.append(PerPlayerSquaredSumMismatch(s, slots, players, score))
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
-  metric = metrics.pop(0)
+  metric = metrics[0]
   while True:
     s.set('soft_timeout', timeleft(deadline) * 1000)
     status = s.check()
@@ -348,6 +351,7 @@ def Search(seconds=180, enumeration=None):
       if timeleft(deadline) > 0:
         print 'Time left:', str(datetime.timedelta(seconds=timeleft(deadline)))
         s.add(metric < badness)
+        metric = max(metrics, key=lambda m: model.evaluate(m).as_long())
       else:
         print 'Time limit reached.'
         s.add(metric == badness)
