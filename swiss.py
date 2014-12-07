@@ -283,6 +283,14 @@ def MismatchSum(s, slots, score_func):
     yield z3.Sum(terms), z3.Sum([t * t for t in terms])
   # TODO: odd players in a round
 
+def MaximumMismatch(s, slots, score):
+  maximum = z3.Int('maximum')
+  for r, round_slots in enumerate(slots):
+    for n, slot in enumerate(round_slots):
+      if odd(n):
+        s.add(score(round_slots[n - 1]) - score(round_slots[n]) <= maximum)
+  return maximum
+
 def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
   mismatches = [
     z3.Function('signed_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
