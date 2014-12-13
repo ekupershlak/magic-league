@@ -197,10 +197,10 @@ def SortSlotsByScore(s, slots, score):
                            round_slots[n + 1] <= round_slots[n - 1]))
       # The rounds themselves are lexicographically ordered,
       # high-to-low. The last slot is the most significant.
-      if r != 0:
+      if r != len(slots) - 1:
         s.add(z3.Implies(
-          slots[r][n] > slots[r-1][n],
-          z3.Or([slots[r][i] < slots[r-1][i]
+          slots[r][n] > slots[r+1][n],
+          z3.Or([slots[r][i] < slots[r+1][i]
                  for i in range(n + 1, len(round_slots))])))
 
 
