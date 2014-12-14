@@ -161,74 +161,56 @@ def MakeSlots(s, n_players, r_rounds):
   """Creates output pairing variables."""
   slots = []
   for r in range(r_rounds):
-    round_slots = []
+    round_slots = {}
     slots.append(round_slots)
     for n in range(n_players):
-      slot = z3.Int('r_{},{}'.format(r, n))
-      round_slots.append(slot)
-      # Bounded
-      s.add(0 <= slot)
-      s.add(slot < n_players)
-    # Distinct
-    s.add(z3.Distinct(*round_slots))
+      round_slots[n] = {}
+      for m in range(n_players):
+        if n < m:
+          round_slots[n][m] = z3.Bool('r_{},{},{}'.format(r, n, m))
+        for q in range(n_players):
+          if q != m:
+            s.add(z3.Implies(round_slots[n][m], z3.Not(round_slots[n][q])))
   return slots
 
 def MakeScoreFunction(s, scores):
   """Creates match points score mapping function."""
-  f = z3.Function('score', z3.IntSort(), z3.IntSort())
+  a = z3.Array('score', z3.IntSort(), z3.IntSort())
   for player_id, score in scores.items():
-    s.add(f(player_id) == score)
+    s.add(a[player_id] == score)
   return f
 
-def SortSlotsByScore(s, slots, score):
-  for r, round_slots in enumerate(slots):
-    for n, slot in enumerate(round_slots):
-      # Sorted
-      if odd(n):
-        # W.l.o.g., right-column <= left-column opponent.
-        s.add(round_slots[n] <= round_slots[n - 1])
-      if n not in (0, 1):
-        if even(n):
-          # W.l.o.g, left column sorted by id
-          s.add(round_slots[n] <= round_slots[n - 2])
-          # W.l.o.g, in a two-row-neighborhood, left columns having
-          # equal score -> right columns ordered.
-          s.add(z3.Implies(score(round_slots[n]) == score(round_slots[n - 2]),
-                           round_slots[n + 1] <= round_slots[n - 1]))
-      # The rounds themselves are lexicographically ordered,
-      # high-to-low. The last slot is the most significant.
-      if r != len(slots) - 1:
-        s.add(z3.Implies(
-          slots[r][n] > slots[r+1][n],
-          z3.Or([slots[r][i] < slots[r+1][i]
-                 for i in range(n + 1, len(round_slots))])))
-
-
 def MakePlayedFunction(s, slots, previous_pairings, players):
-  played = z3.Function('played_0', z3.IntSort(), z3.IntSort(), z3.BoolSort())
+  played_0 = {}
+  for n, row in enumerate(slots[0]):
+    for m, _ in enumerate(row):
+      played_0.setdefault(
+        n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
+      # Previous cycles' pairings
+      if (n, m) in previous_pairings:
+        s.add(played_0[n][m])
+      else:
+        s.add(z3.Not(played_0[n][m]))
 
-  for (pa, pb) in previous_pairings:
-    # Previous cycles' pairings
-    if players[pa] > players[pb]:
-      s.add(played(players[pa], players[pb]))
-  for id_a in players.values():
-    # Players have always played themselves (cannot play themselves).
-    s.add(played(id_a, id_a))
-
-  played_funcs = [played]
+  played_funcs = [played_0]
   for r, round_slots in enumerate(slots):
     if r == 0:
       continue
     # Matches from earlier rounds count as played for later rounds.
-    played_prime = z3.Function('played_' + str(r),
+    played_prime = {}
+    z3.Function('played_' + str(r),
                                z3.IntSort(), z3.IntSort(), z3.BoolSort())
-    s.add([z3.Implies(played_funcs[-1](x, y), played_prime(x, y))
-           for x in range(len(round_slots))
-           for y in range(len(round_slots)) if x > y])
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        # Set last round's matches as played
-        s.add(played_prime(slots[r-1][n-1], slots[r-1][n]))
+    for n, row in enumerate(slots[0]):
+      for m, _ in enumerate(row):
+        played_prime.setdefault(
+          n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
+    s.add([z3.Implies(played_funcs[-1][n][m], played_prime[n][m])
+           for n in range(len(round_slots))
+           for m in range(len(round_slots)) if n < m])
+    ## for n, slot in enumerate(round_slots):
+    ##   if odd(n):
+    ##     # Set last round's matches as played
+    ##     s.add(played_prime(slots[r-1][n-1], slots[r-1][n]))
     # TODO: If pairing more than 3 rounds, keep adding cross-round odd matches.
     played_funcs.append(played_prime)
 
@@ -237,11 +219,10 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
 def NoRepeatMatches(s, slots, played_funcs):
   for r, round_slots in enumerate(slots):
     played = played_funcs[r]
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        s.add(z3.Not(played(slots[r][n-1], slots[r][n])))
-    if odd(r) and odd(len(slots[0])):
-      s.add(z3.Not(played(slots[r-1][-1], slots[r][-1])))
+    for n, row in enumerate(round_slots]):
+      for m, _ in enumerate(row):
+        if n < m:
+          s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m]))
 
 def NoRepeatByes(s, slots, previous_pairings, players):
   previously_byed = [player for (player, bye) in previous_pairings
@@ -328,9 +309,8 @@ players = {name: id for (id, (score, name)) in
 def Search(seconds=180, enumeration=None):
   s = z3.Solver()
   s.push()
-  slots = MakeSlots(s, len(players), 3)
+  slots = MakeSlots(s, len(players), 1)
   score = MakeScoreFunction(s, scores)
-  SortSlotsByScore(s, slots, score)
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
