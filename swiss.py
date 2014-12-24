@@ -232,39 +232,31 @@ def NoRepeatByes(s, slots, previous_pairings, players):
   for player in previously_byed:
     s.add(slots[-1][-1] != players[player])
 
+def SignedMismatch(round_slots, scores, n, m):
+  return z3.If(round_slots[n][m], scores[m] - scores[n], 0)
+
 # Metric 1
 def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
-  mismatches = [
-    z3.Function('abs_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
-    for r in range(len(slots))]
-  for round_slots, round_mismatch in zip(slots, mismatches):
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        player = slot
-        opponent = round_slots[n - 1]
-        s.add(round_mismatch(opponent) == round_mismatch(player),
-              round_mismatch(player) ==
-              score_func(opponent) - score_func(player))
-    # TODO: odd players in a round
-
-  def AbsoluteMismatchSum(player):
-    return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
-
-  return z3.Sum([AbsoluteMismatchSum(player_id) *
-                 AbsoluteMismatchSum(player_id)
-                 for player_id in players.values()])
-
-def MismatchSum(s, slots, score_func):
+  mismatches = {}
   for r, round_slots in enumerate(slots):
-    terms = []
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        player = slot
-        opponent = round_slots[n - 1]
-        term = score_func(opponent) - score_func(player)
-        terms.append(term)
+    for n, row in round_slots.items():
+      for m, slot in row.items():
+        term = z3.If(slot, scores[m] - scores[n], 0)
+        mismatches[n].append(term)
+        mismatches[m].append(term)
+  def PlayersMismatchSumSquared():
+    for player_id in players.values():
+      term_sum = z3.Sum(mismatches[player_id])
+      yield term_sum * term_sum
+  return z3.Sum(list(PlayersMismatchSumSquared()))
+
+def MismatchSum(s, slots, scores):
+  terms = []
+  for r, round_slots in enumerate(slots):
+    for n, row in round_slots.items():
+      for m, slot in row.items():
+        terms.append(z3.If(slot, scores[m] - scores[n], 0))
     yield z3.Sum(terms), z3.Sum([t * t for t in terms])
-  # TODO: odd players in a round
 
 def MaximumMismatch(s, slots, score):
   maximum = z3.Int('maximum')
