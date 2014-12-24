@@ -251,11 +251,13 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, scores):
 
 def MismatchSum(s, slots, scores):
   terms = []
+  sq_terms = []
   for r, round_slots in enumerate(slots):
     for n, row in round_slots.items():
       for m, slot in row.items():
         terms.append(z3.If(slot, scores[m] - scores[n], 0))
-    yield z3.Sum(terms), z3.Sum([t * t for t in terms])
+        sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
+    yield z3.Sum(terms), z3.Sum(sq_terms)
 
 def MaximumMismatch(s, slots, score):
   maximum = z3.Int('maximum')
