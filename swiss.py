@@ -312,8 +312,8 @@ def Search(seconds=180, enumeration=None):
   all_metrics = []
   mismatch_sum_result = list(MismatchSum(s, slots, scores))
   for linear_mismatch, squared_mismatch in mismatch_sum_result:
-    all_metrics.append(linear_mismatch)
     all_metrics.append(squared_mismatch)
+    all_metrics.append(linear_mismatch)
   #all_metrics.append(
   #  PerPlayerAbsoluteMismatchSumSquared(s, slots, players, scores))
   #all_metrics.append(PerPlayerSquaredSumMismatch(s, slots, players, scores))
