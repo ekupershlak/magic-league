@@ -182,13 +182,6 @@ def MakeSlots(s, n_players, r_rounds):
       s.add(z3.Or(n_adjacency))
   return slots
 
-def MakeScoreFunction(s, scores):
-  """Creates match points score mapping function."""
-  a = z3.Array('score', z3.IntSort(), z3.IntSort())
-  for player_id, score in scores.items():
-    s.add(a[player_id] == score)
-  return f
-
 def MakePlayedFunction(s, slots, previous_pairings, players):
   played_0 = {}
   for n, row in enumerate(slots[0]):
@@ -314,17 +307,17 @@ scores = {id: score for (id, (score, name)) in
           zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
+reverse_players = {number: name for name, number in players.items()}
 
 def Search(seconds=180, enumeration=None):
   s = z3.Solver()
   s.push()
   slots = MakeSlots(s, len(players), 1)
-  score = MakeScoreFunction(s, scores)
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
   all_metrics = []
-  mismatch_sum_result = list(MismatchSum(s, slots, score))
+  mismatch_sum_result = list(MismatchSum(s, slots, scores))
   for linear_mismatch, _ in mismatch_sum_result:
     all_metrics.append(linear_mismatch)
   #for _, squared_mismatch in mismatch_sum_result:
@@ -377,7 +370,7 @@ def Search(seconds=180, enumeration=None):
         winner = m
     print 'Total solutions found:', max(total, 1)
 
-  PrintModel(slots, players, score, winner)
+  PrintModel(slots, players, scores, winner)
   print
   print 'Badness:', tuple(winner.evaluate(m) for m in all_metrics)
   return list(ModelPlayers(slots, players, score, winner))
@@ -399,8 +392,7 @@ def AllOptimalModels(s, slots, deadline=None):
     else:
       break
 
-def PrintModel(slots, players, score, model):
-  reverse_players = {number: name for name, number in players.items()}
+def PrintModel(slots, players, scores, model):
   for r, round_slots in enumerate(slots):
     print 'Round', r + 1
     for n, slot in enumerate(round_slots):
@@ -408,10 +400,10 @@ def PrintModel(slots, players, score, model):
         player = slot
         opponent = round_slots[n - 1]
         print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
-          '({})'.format(model.evaluate(score(opponent))),
+          '({})'.format(model.evaluate(scores[opponent])),
           reverse_players[model.evaluate(opponent).as_long()],
           reverse_players[model.evaluate(player).as_long()],
-          '({})'.format(model.evaluate(score(player))))
+          '({})'.format(model.evaluate(scores[player])))
 
 def ModelPlayers(slots, players, score, model):
   reverse_players = {number: name for name, number in players.items()}
