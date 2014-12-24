@@ -184,8 +184,8 @@ def MakeSlots(s, n_players, r_rounds):
 
 def MakePlayedFunction(s, slots, previous_pairings, players):
   played_0 = {}
-  for n, row in enumerate(slots[0]):
-    for m, _ in enumerate(row):
+  for n, row in slots[0].items():
+    for m, _ in row.items():
       played_0.setdefault(
         n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
       # Previous cycles' pairings
@@ -202,8 +202,8 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
     played_prime = {}
     z3.Function('played_' + str(r),
                                z3.IntSort(), z3.IntSort(), z3.BoolSort())
-    for n, row in enumerate(slots[0]):
-      for m, _ in enumerate(row):
+    for n, row in slots[0].items():
+      for m, _ in row.items():
         played_prime.setdefault(
           n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
     s.add([z3.Implies(played_funcs[-1][n][m], played_prime[n][m])
@@ -221,10 +221,10 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
 def NoRepeatMatches(s, slots, played_funcs):
   for r, round_slots in enumerate(slots):
     played = played_funcs[r]
-    for n, row in enumerate(round_slots]):
-      for m, _ in enumerate(row):
+    for n, row in round_slots.items():
+      for m, _ in row.items():
         if n < m:
-          s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m]))
+          s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m])))
 
 def NoRepeatByes(s, slots, previous_pairings, players):
   previously_byed = [player for (player, bye) in previous_pairings
