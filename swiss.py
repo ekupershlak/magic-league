@@ -386,22 +386,18 @@ def AllOptimalModels(s, slots, deadline=None):
 def PrintModel(slots, players, scores, model):
   for r, round_slots in enumerate(slots):
     print 'Round', r + 1
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        player = slot
-        opponent = round_slots[n - 1]
-        print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
-          '({})'.format(model.evaluate(scores[opponent])),
-          reverse_players[model.evaluate(opponent).as_long()],
-          reverse_players[model.evaluate(player).as_long()],
-          '({})'.format(model.evaluate(scores[player])))
+    for n, row in reversed(round_slots.items()):
+      for m, playing in reversed(row.items()):
+        if str(model.evaluate(playing)) == 'True':
+          player = reverse_players[m]
+          opponent = reverse_players[n]
+          print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
+            '({})'.format(scores[m]), player, opponent,
+            '({})'.format(scores[n]))
 
 def ModelPlayers(slots, players, score, model):
-  reverse_players = {number: name for name, number in players.items()}
   for r, round_slots in enumerate(slots):
-    for n, slot in enumerate(round_slots):
-      if odd(n):
-        player = slot
-        opponent = round_slots[n - 1]
-        yield (reverse_players[model.evaluate(opponent).as_long()],
-               reverse_players[model.evaluate(player).as_long()])
+    for n, row in reversed(round_slots.items()):
+      for m, playing in reversed(row.items()):
+        if str(model.evaluate(playing)) == 'True':
+          yield (reverse_players[m], reverse_players[n])
