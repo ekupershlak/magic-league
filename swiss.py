@@ -320,7 +320,7 @@ def Search(seconds=180, enumeration=None):
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
-  metric = metrics[0]
+  metric = metrics.pop()
   while True:
     s.set('soft_timeout', timeleft(deadline) * 1000)
     status = s.check()
@@ -367,7 +367,9 @@ def Search(seconds=180, enumeration=None):
   return list(ModelPlayers(slots, players, scores, winning_model))
 
 def NegateModel(slots, model):
-  return z3.Or([slot != model[slot] for round in slots for slot in round])
+  return z3.Or([slot != model[slot]
+                for round in slots for d in round.values()
+                for slot in d.values()])
 
 def AllOptimalModels(s, slots, deadline=None):
   while True:
