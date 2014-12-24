@@ -332,7 +332,6 @@ def Search(seconds=180, enumeration=None):
       if timeleft(deadline) > 0:
         print 'Time left:', str(datetime.timedelta(seconds=timeleft(deadline)))
         s.add(metric < badness)
-        metric = max(metrics, key=lambda m: model.evaluate(m).as_long())
       else:
         print 'Time limit reached.'
         s.add(metric == badness)
