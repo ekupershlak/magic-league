@@ -223,8 +223,7 @@ def NoRepeatMatches(s, slots, played_funcs):
     played = played_funcs[r]
     for n, row in round_slots.items():
       for m, _ in row.items():
-        if n < m:
-          s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m])))
+        s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m])))
 
 def NoRepeatByes(s, slots, previous_pairings, players):
   previously_byed = [player for (player, bye) in previous_pairings
