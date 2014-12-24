@@ -235,14 +235,14 @@ def SignedMismatch(round_slots, scores, n, m):
   return z3.If(round_slots[n][m], scores[m] - scores[n], 0)
 
 # Metric 1
-def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score_func):
+def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, scores):
   mismatches = {}
   for r, round_slots in enumerate(slots):
     for n, row in round_slots.items():
       for m, slot in row.items():
         term = z3.If(slot, scores[m] - scores[n], 0)
-        mismatches[n].append(term)
-        mismatches[m].append(term)
+        mismatches.setdefault(n, []).append(term)
+        mismatches.setdefault(m, []).append(term)
   def PlayersMismatchSumSquared():
     for player_id in players.values():
       term_sum = z3.Sum(mismatches[player_id])
@@ -265,7 +265,7 @@ def MaximumMismatch(s, slots, score):
         s.add(score(round_slots[n - 1]) - score(round_slots[n]) <= maximum)
   return maximum
 
-def PerPlayerSquaredSumMismatch(s, slots, players, score_func):
+def PerPlayerSquaredSumMismatch(s, slots, players, scores):
   mismatches = [
     z3.Function('signed_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
     for r in range(len(slots))]
@@ -309,13 +309,12 @@ def Search(seconds=180, enumeration=None):
   #NoRepeatByes(s, slots, previous_pairings, players)
   all_metrics = []
   mismatch_sum_result = list(MismatchSum(s, slots, scores))
-  for linear_mismatch, _ in mismatch_sum_result:
+  for linear_mismatch, squared_mismatch in mismatch_sum_result:
     all_metrics.append(linear_mismatch)
-  #for _, squared_mismatch in mismatch_sum_result:
-  #  all_metrics.append(squared_mismatch)
+    all_metrics.append(squared_mismatch)
   #all_metrics.append(
-  #  PerPlayerAbsoluteMismatchSumSquared(s, slots, players, score))
-  #all_metrics.append(PerPlayerSquaredSumMismatch(s, slots, players, score))
+  #  PerPlayerAbsoluteMismatchSumSquared(s, slots, players, scores))
+  #all_metrics.append(PerPlayerSquaredSumMismatch(s, slots, players, scores))
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
