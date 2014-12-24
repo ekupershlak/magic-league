@@ -168,9 +168,18 @@ def MakeSlots(s, n_players, r_rounds):
       for m in range(n_players):
         if n < m:
           round_slots[n][m] = z3.Bool('r_{},{},{}'.format(r, n, m))
-        for q in range(n_players):
-          if q != m:
-            s.add(z3.Implies(round_slots[n][m], z3.Not(round_slots[n][q])))
+      n_adjacency = []
+      for m in range(n_players):
+        if n < m:
+          n_adjacency.append(round_slots[n][m])
+        elif n > m:
+          n_adjacency.append(round_slots[m][n])
+      for p in n_adjacency:
+        # At most one opponent
+        opps = [q for q in n_adjacency if p is not q]
+        s.add(z3.Implies(p, z3.Not(z3.Or(opps))))
+      # At least one opponent
+      s.add(z3.Or(n_adjacency))
   return slots
 
 def MakeScoreFunction(s, scores):
