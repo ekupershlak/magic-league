@@ -337,6 +337,7 @@ def Search(seconds=180, enumeration=None):
     elif status == z3.unsat:
       print 'OPTIMAL!'
       s.pop()
+      s.push()
       s.add(metric == badness)
       try:
         metric = metrics.pop(0)
@@ -346,6 +347,7 @@ def Search(seconds=180, enumeration=None):
     else:
       print 'Time limit reached.'
       s.pop()
+      s.push()
       s.add(metric <= badness)
       break
 
