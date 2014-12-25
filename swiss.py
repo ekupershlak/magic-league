@@ -318,7 +318,7 @@ def Search(seconds=180, enumeration=None):
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
-  metric = metrics.pop()
+  metric = metrics.pop(0)
   while True:
     s.set('soft_timeout', timeleft(deadline) * 1000)
     status = s.check()
