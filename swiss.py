@@ -207,6 +207,10 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
     s.add([z3.Implies(played_funcs[-1][n][m], played_prime[n][m])
            for n in range(len(round_slots))
            for m in range(len(round_slots)) if n < m])
+    for n, row in round_slots.items():
+      for m, slot in row.items():
+        # Add current round's matches as played.
+        s.add(z3.Implies(round_slots[n][m], played_prime[n][m]))
     # TODO: If pairing more than 3 rounds, keep adding cross-round odd matches.
     played_funcs.append(played_prime)
 
