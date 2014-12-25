@@ -303,7 +303,7 @@ reverse_players = {number: name for name, number in players.items()}
 def Search(seconds=180, enumeration=None):
   s = z3.Solver()
   s.push()
-  slots = MakeSlots(s, len(players), 1)
+  slots = MakeSlots(s, len(players), 3)
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
   #NoRepeatByes(s, slots, previous_pairings, players)
