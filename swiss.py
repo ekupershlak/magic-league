@@ -248,9 +248,9 @@ def PerPlayerAbsoluteMismatchSumSquared(s, slots, players, scores):
   return z3.Sum(list(PlayersMismatchSumSquared()))
 
 def MismatchSum(s, slots, scores):
-  terms = []
-  sq_terms = []
   for r, round_slots in enumerate(slots):
+    terms = []
+    sq_terms = []
     for n, row in round_slots.items():
       for m, slot in row.items():
         terms.append(z3.If(slot, scores[m] - scores[n], 0))
