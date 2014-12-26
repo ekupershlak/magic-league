@@ -1,3 +1,5 @@
+from __future__ import division
+
 import collections
 import copy
 import datetime
@@ -300,6 +302,15 @@ scores = {id: score for (id, (score, name)) in
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 reverse_players = {number: name for name, number in players.items()}
+player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
+opponents = {}
+for a, b in previous_pairings:
+  opponents.setdefault(a, []).append(b)
+omw = {
+  player: max(1/3., sum(player_scores[opponent] / (3 * len(opponents[player]))
+                        for opponent in opponents[player]) /
+              len(opponents[player]))
+  for player in players}
 
 def Search(seconds=180, enumeration=None):
   s = z3.Solver()
