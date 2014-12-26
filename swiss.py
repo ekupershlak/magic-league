@@ -198,19 +198,19 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
   for r, round_slots in enumerate(slots):
     if r == 0:
       continue
-    # Matches from earlier rounds count as played for later rounds.
     played_prime = {}
     for n, row in round_slots.items():
       for m, _ in row.items():
         played_prime.setdefault(
           n, {}).setdefault(m, z3.Bool('played_{},{},{}'.format(r, n, m)))
+    # Played previously means always played going forward.
     s.add([z3.Implies(played_funcs[-1][n][m], played_prime[n][m])
            for n in range(len(round_slots))
            for m in range(len(round_slots)) if n < m])
+    # Add most recent round's pairings as played.
     for n, row in round_slots.items():
       for m, slot in row.items():
-        # Add current round's matches as played.
-        s.add(z3.Implies(round_slots[n][m], played_prime[n][m]))
+        s.add(z3.Implies(slots[r - 1][n][m], played_prime[n][m]))
     # TODO: If pairing more than 3 rounds, keep adding cross-round odd matches.
     played_funcs.append(played_prime)
 
@@ -254,7 +254,8 @@ def MismatchSum(s, slots, scores):
     for n, row in round_slots.items():
       for m, slot in row.items():
         terms.append(z3.If(slot, scores[m] - scores[n], 0))
-        sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
+        sq_terms.append(
+          z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
     yield z3.Sum(terms), z3.Sum(sq_terms)
 
 def MaximumMismatch(s, slots, score):
