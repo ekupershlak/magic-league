@@ -337,12 +337,15 @@ def Search(seconds=180, enumeration=None):
         break
     elif status == z3.unsat:
       print 'OPTIMAL!'
+      print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
       s.pop()
       s.push()
       s.add(metric == badness)
       try:
         metric = metrics.pop(0)
-        s.add(metric < model.evaluate(metric))
+        s.push()
+        badness = model.evaluate(metric)
+        s.add(metric < badness)
       except IndexError:
         break
     else:
@@ -373,18 +376,22 @@ def NegateModel(slots, model):
                 for slot in d.values()])
 
 def AllOptimalModels(s, slots, deadline=None):
-  while True:
-    if deadline:
-      if timeleft(deadline) > 0:
-        s.set('soft_timeout', timeleft(deadline) * 1000)
+  try:
+    s.push()
+    while True:
+      if deadline:
+        if timeleft(deadline) > 0:
+          s.set('soft_timeout', timeleft(deadline) * 1000)
+        else:
+          return
+      if s.check() == z3.sat:
+        model = s.model()
+        yield model
+        s.add(NegateModel(slots, model))
       else:
-        return
-    if s.check() == z3.sat:
-      model = s.model()
-      yield model
-      s.add(NegateModel(slots, model))
-    else:
-      break
+        break
+  finally:
+    s.pop()
 
 def PrintModel(slots, players, scores, model):
   for r, round_slots in enumerate(slots):
