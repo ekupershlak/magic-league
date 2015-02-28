@@ -14,8 +14,8 @@ import z3
 
 sheets_account = 'chrisconnett@gmail.com'
 sheets_password = password.sheets_password
-sheets_spreadsheet = 'magic-ny KTK Sealed League'
-cycle_to_pair = 5
+sheets_spreadsheet = 'magic-ny FRF Sealed League'
+cycle_to_pair = 3
 n = cycle_to_pair - 1
 limit = 40320
 BYE = 'BYE'
