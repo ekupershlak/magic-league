@@ -160,12 +160,6 @@ def NoRepeatMatches(s, slots, played_funcs):
       for m, _ in row.items():
         s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m])))
 
-def NoRepeatByes(s, slots, previous_pairings, players):
-  previously_byed = [player for (player, bye) in previous_pairings
-                     if bye == BYE]
-  for player in previously_byed:
-    s.add(slots[-1][-1] != players[player])
-
 def SignedMismatch(round_slots, scores, n, m):
   return z3.If(round_slots[n][m], scores[m] - scores[n], 0)
 
@@ -277,7 +271,6 @@ def Search(seconds=180, enumeration=None):
   slots = MakeSlots(s, len(players), 3)
   played = MakePlayedFunction(s, slots, previous_pairings, players)
   NoRepeatMatches(s, slots, played)
-  #NoRepeatByes(s, slots, previous_pairings, players)
   all_metrics = []
   mismatch_sum_result = list(MismatchSum(s, slots, scores))
   for linear_mismatch, squared_mismatch in mismatch_sum_result:
