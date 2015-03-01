@@ -212,8 +212,13 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
     # Add most recent round's pairings as played.
     for n, row in round_slots.items():
       for m, slot in row.items():
-        s.add(z3.Implies(slots[r - 1][n][m], played_prime[n][m]))
-    # TODO: If pairing more than 3 rounds, keep adding cross-round odd matches.
+        if BYE in players and m == max(row) and odd(r):
+          for n2 in slots[r - 1]:
+            if n < max(round_slots) and n2 < max(slots[r - 1]) and n < n2:
+              s.add(z3.Implies(z3.And(slots[r - 1][n2][m] and slots[r][n][m]),
+                               played_prime[n][n2]))
+        else:
+          s.add(z3.Implies(slots[r - 1][n][m], played_prime[n][m]))
     played_funcs.append(played_prime)
 
   return played_funcs
@@ -255,9 +260,22 @@ def MismatchSum(s, slots, scores):
     sq_terms = []
     for n, row in round_slots.items():
       for m, slot in row.items():
-        terms.append(z3.If(slot, scores[m] - scores[n], 0))
-        sq_terms.append(
-          z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
+        if BYE in players and m == max(row):
+          if even(r):
+            if r == len(slots) - 1:
+              terms.append(z3.If(slot, scores[n], 0))
+              sq_terms.append(z3.If(slot, scores[n]**2, 0))
+            else:
+              last_n = n
+              last_slot = slot
+          else:
+            terms.append(z3.If(z3.And(last_slot, slot),
+                               abs(scores[last_n] - scores[n]), 0))
+            sq_terms.append(z3.If(z3.And(last_slot, slot),
+                                  abs(scores[last_n] - scores[n]) ** 2, 0))
+        else:
+          terms.append(z3.If(slot, scores[m] - scores[n], 0))
+          sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
     yield z3.Sum(terms), z3.Sum(sq_terms)
 
 def MaximumMismatch(s, slots, score):
@@ -297,20 +315,31 @@ groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
   file('dat'))
 
 
-scores = {id: score for (id, (score, name)) in
-          zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
 players = {name: id for (id, (score, name)) in
            zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
+scores = {id: score for (id, (score, name)) in
+          zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
+if odd(len(players)):
+  players[BYE] = len(players)
+  scores[players[BYE]] = 0
+
 reverse_players = {number: name for name, number in players.items()}
 player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
+
+def remove_bye(l):
+  return [p for p in l if p != BYE]
+
 opponents = {}
 for a, b in previous_pairings:
-  opponents.setdefault(a, []).append(b)
+  if b != BYE:
+    opponents.setdefault(a, []).append(b)
 omw = {
-  player: max(1/3., sum(player_scores[opponent] / (3 * len(opponents[player]))
-                        for opponent in opponents[player]) /
-              len(opponents[player]))
-  for player in players}
+  player: max(1/3., sum(player_scores[opponent] -
+                        3 if BYE in opponents[player] else 0 /
+                        (3 * len(remove_bye(opponents[player])))
+                        for opponent in opponents[player] if opponent != BYE) /
+              len(remove_bye(opponents[player])))
+  for player in players if player != BYE}
 
 def Search(seconds=180, enumeration=None):
   s = z3.Solver()
