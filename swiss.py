@@ -121,7 +121,7 @@ def MakePlayedFunction(s, slots, previous_pairings, players):
       played_0.setdefault(
         n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
       # Previous cycles' pairings
-      if (n, m) in previous_pairings:
+      if (reverse_players[n], reverse_players[m]) in previous_pairings:
         s.add(played_0[n][m])
       else:
         s.add(z3.Not(played_0[n][m]))
