@@ -50,6 +50,7 @@ def Fetch():
   spreadsheet = GetSpreadsheet()
   standings = spreadsheet.worksheet('Standings')
   names = standings.col_values(2)[1:]
+  names.append(BYE)
   scores = [int(s) for s in standings.col_values(4)[1:]]
 
   previous_pairings = set()
