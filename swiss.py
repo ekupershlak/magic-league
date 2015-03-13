@@ -19,6 +19,7 @@ cycle_to_pair = 3
 n = cycle_to_pair - 1
 limit = 40320
 BYE = 'BYE'
+drops = ['Matthew Halupka']
 
 
 def Take(n, iterable):
@@ -258,11 +259,10 @@ except IOError:
 groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
     file('dat'))
 
-
-players = {name: id for (id, (score, name)) in
-           zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
-scores = {id: score for (id, (score, name)) in
-          zip(itertools.count(), reversed(list(itertools.chain(*groups))))}
+g_star = reversed(list(itertools.chain(*groups)))
+g_star = [(score, name) for (score, name) in g_star if name not in drops]
+players = {name: id for (id, (score, name)) in zip(itertools.count(), g_star)}
+scores = {id: score for (id, (score, name)) in zip(itertools.count(), g_star)}
 if Odd(len(players)):
   players[BYE] = len(players)
   scores[players[BYE]] = 0
