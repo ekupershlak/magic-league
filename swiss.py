@@ -14,12 +14,11 @@ import password
 
 sheets_account = 'chrisconnett@gmail.com'
 sheets_password = password.sheets_password
-sheets_spreadsheet = 'magic-ny FRF Sealed League'
+sheets_spreadsheet = 'magic-ny DTK Sealed League'
 cycle_to_pair = 3
-n = cycle_to_pair - 1
+num_cycles_previous = cycle_to_pair - 1
 limit = 40320
 BYE = 'BYE'
-drops = ['Matthew Halupka']
 
 
 def Take(n, iterable):
@@ -58,7 +57,7 @@ def Fetch():
   total_mismatch = 0
   player_mismatch = dict.fromkeys(names, 0)
 
-  for i in range(1, num_rounds_previous + 1):
+  for i in range(1, num_cycles_previous + 1):
     cycle = spreadsheet.worksheet('Cycle {}'.format(i))
     a = cycle.col_values(3)[1:]
     b = cycle.col_values(4)[1:]
@@ -261,7 +260,6 @@ groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
     file('dat'))
 
 g_star = reversed(list(itertools.chain(*groups)))
-g_star = [(score, name) for (score, name) in g_star if name not in drops]
 players = {name: id for (id, (score, name)) in zip(itertools.count(), g_star)}
 scores = {id: score for (id, (score, name)) in zip(itertools.count(), g_star)}
 if Odd(len(players)):
