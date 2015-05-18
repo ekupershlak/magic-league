@@ -62,22 +62,6 @@ def Fetch():
     a = cycle.col_values(3)[1:]
     b = cycle.col_values(4)[1:]
     winners = cycle.col_values(7)[1:]
-    for pa, pb, winner in zip(a, b, winners):
-      player_mismatch[pa] += partial_scores[pb] - partial_scores[pa]
-      player_mismatch[pb] += partial_scores[pa] - partial_scores[pb]
-      total_mismatch += (partial_scores[pa] - partial_scores[pb]) ** 2
-
-    for pa, pb, winner in zip(a, b, winners):
-      partial_scores[pa] += {
-          pa: 3,
-          "Didn't play:{}-{}".format(pa, pb): 1,
-          '': 1,
-          pb: 0}[winner]
-      partial_scores[pb] += {
-          pb: 3,
-          "Didn't play:{}-{}".format(pa, pb): 1,
-          '': 1,
-          pa: 0}[winner]
     previous_pairings |= set(zip(a, b))
     previous_pairings |= set(zip(b, a))
 
