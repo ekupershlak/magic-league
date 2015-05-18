@@ -261,14 +261,14 @@ opponents = {}
 for a, b in previous_pairings:
   if b != BYE:
     opponents.setdefault(a, []).append(b)
-omw = {
-    player: max(1 / 3.,
-                sum(player_scores[opponent] -
-                    3 if BYE in opponents[player] else 0 /
-                    (3 * len(RemoveBye(opponents[player])))
-                    for opponent in opponents[player] if opponent != BYE) /
-                len(RemoveBye(opponents[player])))
-    for player in players if player != BYE}
+## omw = {
+##     player: max(1 / 3.,
+##                 sum(player_scores[opponent] -
+##                     3 if BYE in opponents[player] else 0 /
+##                     (3 * len(RemoveBye(opponents[player])))
+##                     for opponent in opponents[player] if opponent != BYE) /
+##                 len(RemoveBye(opponents[player])))
+##     for player in players if player != BYE}
 
 
 def Search(seconds=180, enumeration=None):
