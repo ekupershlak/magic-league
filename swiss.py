@@ -133,19 +133,31 @@ def MakeSlots(n_players, r_rounds):
         slots[n][m] = z3.Bool('m_{},{}'.format(n, m))
   return slots
 
-def RequestedMatches(s, slots, guaranteed, r):
+def RequestedMatches(slots, guaranteed, requested_matches):
   n_players = len(slots) + 1
+  print requested_matches
+  odd = Odd(len([i for i, rm in enumerate(requested_matches) if rm > 0]))
+  last_with_surplus = odd and max(
+    i for i, rm in enumerate(requested_matches) if rm > 1)
   for n in range(n_players):
     n_adjacency = []
     for m in range(n_players):
-      if (n, m) not in guaranteed:
+      if (n, m) not in guaranteed and (m, n) not in guaranteed:
         if n < m:
           n_adjacency.append(slots[n][m])
         elif n > m:
           n_adjacency.append(slots[m][n])
-    if requested_matches[n] >= r:
-      #yield z3.Or(n_adjacency)
-      yield 1 == z3.Sum([z3.If(match, 1, 0) for match in n_adjacency])
+    if requested_matches[n] > 0:
+      matches_to_assign = 1 + (odd and n == last_with_surplus)
+      if matches_to_assign == 1:
+        yield z3.Or(n_adjacency)
+        for n_ in n_adjacency:
+          yield z3.Implies(n_, z3.Not(z3.Or(
+            [m_ for m_ in n_adjacency if m_ is not n_])))
+      else:
+        yield matches_to_assign == z3.Sum(
+          [z3.If(match, 1, 0) for match in n_adjacency])
+      requested_matches[n] -= matches_to_assign
     else:
       yield z3.Not(z3.Or(n_adjacency))
 
@@ -213,11 +225,9 @@ for a, b in previous_pairings:
 def Search(seconds=180, enumeration=None):
   """Constructs an SMT problem for pairings and solves it."""
   s = z3.Solver()
+  s = NamedStack()
   s.push()
   slots = MakeSlots(len(players), 3)
-  s.add(slots[23][31])
-  s.add(slots[23][30])
-  s.add(slots[23][32])
   NoRepeatMatches(s, slots, previous_pairings)
   all_metrics = []
   mismatch_sum_result = [MismatchSum(slots, scores)]
@@ -226,54 +236,57 @@ def Search(seconds=180, enumeration=None):
     # all_metrics.append(linear_mismatch)
   metrics = all_metrics[:]
 
-  deadline = time.time() + seconds
   metric = metrics.pop(0)
   guaranteed = set()
-  r = 1
-  for term in RequestedMatchesAll(slots):
-    s.add(term)
+  my_requested_matches = requested_matches[:]
+  while any(my_requested_matches):
+    s.push('start_round')
+    for term in RequestedMatches(slots, guaranteed, my_requested_matches):
+      s.add(term)
 
-  while True:
-    s.set('soft_timeout', Timeleft(deadline) * 1000)
-    status = s.check()
-    if status == z3.sat:
-      model = s.model()
-      badness = model.evaluate(metric)
-      print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
-      s.push()
-      if Timeleft(deadline) > 0:
-        print 'Time left:', str(datetime.timedelta(seconds=Timeleft(deadline)))
-        s.add(metric < badness)
+    deadline = time.time() + seconds
+    while True:
+      s.set('soft_timeout', Timeleft(deadline) * 1000)
+      status = s.check()
+      if status == z3.sat:
+        model = s.model()
+        badness = model.evaluate(metric)
+        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
+        s.push()
+        if Timeleft(deadline) > 0:
+          print 'Time left:', str(datetime.timedelta(seconds=Timeleft(deadline)))
+          s.add(metric < badness)
+        else:
+          print 'Time limit reached.'
+          s.add(metric == badness)
+          break
+      elif status == z3.unsat:
+        print 'OPTIMAL!'
+        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
+        s.pop()
+        s.push()
+        break
+        ## try:
+        ##   metric = metrics.pop(0)
+        ##   s.push()
+        ##   badness = model.evaluate(metric)
+        ##   s.add(metric < badness)
+        ## except IndexError:
+        ##   break
       else:
         print 'Time limit reached.'
-        s.add(metric == badness)
-        break
-    elif status == z3.unsat:
-      print 'OPTIMAL!'
-      print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
-      s.pop()
-      s.push()
-      ## for n in slots:
-      ##   for m in slots[n]:
-      ##     if model.evaluate(slots[n][m]):
-      ##       guaranteed.add((n, m))
-      ##       s.add(slots[n][m])
-      try:
-        r += 1
-        if r == 4:
-          break
-        # metric = metrics.pop(0)
+        s.pop()
         s.push()
-        badness = model.evaluate(metric)
-        s.add(metric < badness)
-      except IndexError:
+        s.add(metric <= badness)
         break
-    else:
-      print 'Time limit reached.'
-      s.pop()
-      s.push()
-      s.add(metric <= badness)
-      break
+    for n in slots:
+      for m in slots[n]:
+        if str(model.evaluate(slots[n][m])) == 'True' and (n, m) not in guaranteed:
+          guaranteed.add((n, m))
+    s.pop('start_round')
+    s.push()
+    s.add([slots[n][m] for n, m in guaranteed])
+
 
   winning_model = model
   if enumeration and status in (z3.unsat, z3.unknown):
