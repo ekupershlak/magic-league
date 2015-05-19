@@ -85,7 +85,7 @@ def Fetch():
   print 'lcm is', lcm
   scores = [int(score * lcm) for score in scores]
   requested_matches = [int(s) for s in standings.col_values(
-    9 + cycle_to_pair - 1)[1:]]
+    9 + cycle_to_pair - 1)[1:]][::-1]
 
   previous_pairings = set()
 
