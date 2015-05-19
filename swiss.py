@@ -108,10 +108,7 @@ def Fetch():
     requested_matches[byed_i] -= 1
     print byed_name, 'receives a bye.'
 
-  groups = [list(group) for _, group in
-            itertools.groupby(sorted(zip(scores, names), reverse=True),
-                              key=lambda (s, n): s)]
-  return groups, previous_pairings, requested_matches
+  return zip(names, scores), previous_pairings, requested_matches
 
 
 def Writeback(pairings):
@@ -185,11 +182,11 @@ try:
   file('dat')
 except IOError:
   cPickle.dump(Fetch(), file('dat', 'w'))
-groups, previous_pairings, requested_matches = cPickle.load(file('dat'))
+names_and_scores, previous_pairings, requested_matches = cPickle.load(file('dat'))
+names_and_scores = list(reversed(names_and_scores))
 
-g_star = list(reversed(list(itertools.chain(*groups))))
-players = {name: id for (id, (score, name)) in zip(itertools.count(), g_star)}
-scores = {id: score for (id, (score, name)) in zip(itertools.count(), g_star)}
+players = {name: id for (id, (name, score)) in zip(itertools.count(), names_and_scores)}
+scores = {id: score for (id, (name, score)) in zip(itertools.count(), names_and_scores)}
 
 reverse_players = {number: name for name, number in players.items()}
 player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
