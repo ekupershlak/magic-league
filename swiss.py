@@ -126,23 +126,33 @@ def Writeback(pairings):
   output.update_cells(pairings_range)
 
 
-def MakeSlots(s, n_players, r_rounds):
+def MakeSlots(n_players, r_rounds):
   """Creates output pairing variables."""
   slots = collections.defaultdict(dict)
   for n in range(n_players):
     for m in range(n_players):
       if n < m:
         slots[n][m] = z3.Bool('m_{},{}'.format(n, m))
-    n_adjacency = []
-    for m in range(n_players):
-      if n < m:
-        n_adjacency.append(slots[n][m])
-      elif n > m:
-        n_adjacency.append(slots[m][n])
-    s.add(requested_matches[n] == z3.Sum([z3.If(slot, 1, 0) for slot in n_adjacency]))
   return slots
 
-def RequestedMatches(s, slots, r):
+def RequestedMatches(s, slots, guaranteed, r):
+  n_players = len(slots) + 1
+  for n in range(n_players):
+    n_adjacency = []
+    for m in range(n_players):
+      if (n, m) not in guaranteed:
+        if n < m:
+          n_adjacency.append(slots[n][m])
+        elif n > m:
+          n_adjacency.append(slots[m][n])
+    if requested_matches[n] >= r:
+      #yield z3.Or(n_adjacency)
+      yield 1 == z3.Sum([z3.If(match, 1, 0) for match in n_adjacency])
+    else:
+      yield z3.Not(z3.Or(n_adjacency))
+
+def RequestedMatchesAll(slots):
+  n_players = len(slots) + 1
   for n in range(n_players):
     n_adjacency = []
     for m in range(n_players):
@@ -150,12 +160,8 @@ def RequestedMatches(s, slots, r):
         n_adjacency.append(slots[n][m])
       elif n > m:
         n_adjacency.append(slots[m][n])
-    if requested_matches[n] >= r:
-      s.add(z3.Or(n_adjacency))
-      s.add([z3.Implies(b, z3.Not(z3.Or([b2 for b2 in n_adjacency if b2 is not b])))
-             for b in n_adjacency])
-    else:
-      s.add(z3.Not(z3.Or(n_adjacency)))
+    yield requested_matches[n] == z3.Sum([z3.If(match, 1, 0)
+                                          for match in n_adjacency])
 
 
 def NoRepeatMatches(s, slots, previous_pairings):
@@ -208,10 +214,12 @@ for a, b in previous_pairings:
 
 def Search(seconds=180, enumeration=None):
   """Constructs an SMT problem for pairings and solves it."""
-  # import pdb; pdb.set_trace()
   s = z3.Solver()
   s.push()
-  slots = MakeSlots(s, len(players), 3)
+  slots = MakeSlots(len(players), 3)
+  s.add(slots[23][31])
+  s.add(slots[23][30])
+  s.add(slots[23][32])
   NoRepeatMatches(s, slots, previous_pairings)
   all_metrics = []
   mismatch_sum_result = [MismatchSum(slots, scores)]
@@ -222,6 +230,11 @@ def Search(seconds=180, enumeration=None):
 
   deadline = time.time() + seconds
   metric = metrics.pop(0)
+  guaranteed = set()
+  r = 1
+  for term in RequestedMatchesAll(slots):
+    s.add(term)
+
   while True:
     s.set('soft_timeout', Timeleft(deadline) * 1000)
     status = s.check()
@@ -242,9 +255,16 @@ def Search(seconds=180, enumeration=None):
       print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
       s.pop()
       s.push()
-      s.add(metric == badness)
+      ## for n in slots:
+      ##   for m in slots[n]:
+      ##     if model.evaluate(slots[n][m]):
+      ##       guaranteed.add((n, m))
+      ##       s.add(slots[n][m])
       try:
-        metric = metrics.pop(0)
+        r += 1
+        if r == 4:
+          break
+        # metric = metrics.pop(0)
         s.push()
         badness = model.evaluate(metric)
         s.add(metric < badness)
