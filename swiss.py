@@ -2,9 +2,11 @@
 
 from __future__ import division
 
+import collections
 import cPickle
 import datetime
 import itertools
+import fractions
 import random
 import time
 
@@ -33,6 +35,9 @@ def Odd(n):
 def Even(n):
   return n % 2 == 0
 
+
+def Lcm(a, b):
+  return a * b / fractions.gcd(a, b)
 
 def Timeleft(deadline):
   return int(deadline - time.time() + 0.5)
@@ -85,170 +90,62 @@ def Writeback(pairings):
 
 def MakeSlots(s, n_players, r_rounds):
   """Creates output pairing variables."""
-  slots = []
-  for r in range(r_rounds):
-    round_slots = {}
-    slots.append(round_slots)
-    for n in range(n_players):
-      round_slots[n] = {}
-      for m in range(n_players):
-        if n < m:
-          round_slots[n][m] = z3.Bool('r_{},{},{}'.format(r, n, m))
-      n_adjacency = []
-      for m in range(n_players):
-        if n < m:
-          n_adjacency.append(round_slots[n][m])
-        elif n > m:
-          n_adjacency.append(round_slots[m][n])
-      for p in n_adjacency:
-        # At most one opponent
-        opps = [q for q in n_adjacency if p is not q]
-        s.add(z3.Implies(p, z3.Not(z3.Or(opps))))
-      # At least one opponent
-      s.add(z3.Or(n_adjacency))
+  slots = collections.defaultdict(dict)
+  for n in range(n_players):
+    for m in range(n_players):
+      if n < m:
+        slots[n][m] = z3.Bool('m_{},{}'.format(n, m))
+    n_adjacency = []
+    for m in range(n_players):
+      if n < m:
+        n_adjacency.append(slots[n][m])
+      elif n > m:
+        n_adjacency.append(slots[m][n])
+    s.add(requested_matches[n] == z3.Sum([z3.If(slot, 1, 0) for slot in n_adjacency]))
   return slots
 
+def RequestedMatches(s, slots, r):
+  for n in range(n_players):
+    n_adjacency = []
+    for m in range(n_players):
+      if n < m:
+        n_adjacency.append(slots[n][m])
+      elif n > m:
+        n_adjacency.append(slots[m][n])
+    if requested_matches[n] >= r:
+      s.add(z3.Or(n_adjacency))
+      s.add([z3.Implies(b, z3.Not(z3.Or([b2 for b2 in n_adjacency if b2 is not b])))
+             for b in n_adjacency])
+    else:
+      s.add(z3.Not(z3.Or(n_adjacency)))
 
-def MakePlayedFunction(s, slots, previous_pairings, players):
-  """Add to formula s variables for which players have already played."""
-  played_0 = {}
-  for n, row in slots[0].items():
+
+def NoRepeatMatches(s, slots, previous_pairings):
+  for n, row in slots.items():
     for m, _ in row.items():
-      played_0.setdefault(
-          n, {}).setdefault(m, z3.Bool('played_0,{},{}'.format(n, m)))
-      # Previous cycles' pairings
       if (reverse_players[n], reverse_players[m]) in previous_pairings:
-        s.add(played_0[n][m])
-      else:
-        s.add(z3.Not(played_0[n][m]))
-
-  played_funcs = [played_0]
-  for r, round_slots in enumerate(slots):
-    if r == 0:
-      continue
-    played_prime = {}
-    for n, row in round_slots.items():
-      for m, _ in row.items():
-        played_prime.setdefault(
-            n, {}).setdefault(m, z3.Bool('played_{},{},{}'.format(r, n, m)))
-    # Played previously means always played going forward.
-    s.add([z3.Implies(played_funcs[-1][n][m], played_prime[n][m])
-           for n in range(len(round_slots))
-           for m in range(len(round_slots)) if n < m])
-    # Add most recent round's pairings as played.
-    for n, row in round_slots.items():
-      for m, _ in row.items():
-        if BYE in players and m == max(row) and Odd(r):
-          for n2 in slots[r - 1]:
-            if n < max(round_slots) and n2 < max(slots[r - 1]) and n < n2:
-              s.add(z3.Implies(z3.And(slots[r - 1][n2][m] and slots[r][n][m]),
-                               played_prime[n][n2]))
-        else:
-          s.add(z3.Implies(slots[r - 1][n][m], played_prime[n][m]))
-    played_funcs.append(played_prime)
-
-  return played_funcs
-
-
-def NoRepeatMatches(s, slots, played_funcs):
-  for r, round_slots in enumerate(slots):
-    played = played_funcs[r]
-    for n, row in round_slots.items():
-      for m, _ in row.items():
-        s.add(z3.Implies(played[n][m], z3.Not(round_slots[n][m])))
-
-
-def SignedMismatch(round_slots, scores, n, m):
-  return z3.If(round_slots[n][m], scores[m] - scores[n], 0)
-
-
-def PerPlayerAbsoluteMismatchSumSquared(slots, players, scores):
-  """Returns a badness metric sum ((player absolute mismatch sum) squared)."""
-  mismatches = {}
-  for round_slots in slots:
-    for n, row in round_slots.items():
-      for m, slot in row.items():
-        term = z3.If(slot, scores[m] - scores[n], 0)
-        mismatches.setdefault(n, []).append(term)
-        mismatches.setdefault(m, []).append(term)
-
-  def PlayersMismatchSumSquared():
-    for player_id in players.values():
-      term_sum = z3.Sum(mismatches[player_id])
-      yield term_sum * term_sum
-  return z3.Sum(list(PlayersMismatchSumSquared()))
+        s.add(z3.Not(slots[n][m]))
 
 
 def MismatchSum(slots, scores):
-  for r, round_slots in enumerate(slots):
-    terms = []
-    sq_terms = []
-    for n, row in round_slots.items():
-      for m, slot in row.items():
-        if BYE in players and m == max(row):
-          if Even(r):
-            if r == len(slots) - 1:
-              terms.append(z3.If(slot, scores[n], 0))
-              sq_terms.append(z3.If(slot, scores[n] ** 2, 0))
-            else:
-              last_n = n
-              last_slot = slot
-          else:
-            terms.append(z3.If(z3.And(last_slot, slot),
-                               abs(scores[last_n] - scores[n]), 0))
-            sq_terms.append(z3.If(z3.And(last_slot, slot),
-                                  abs(scores[last_n] - scores[n]) ** 2, 0))
-        else:
-          terms.append(z3.If(slot, scores[m] - scores[n], 0))
-          sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
-    yield z3.Sum(terms), z3.Sum(sq_terms)
-
-
-def MaximumMismatch(s, slots, score):
-  maximum = z3.Int('maximum')
-  for round_slots in slots:
-    for n, _ in enumerate(round_slots):
-      if Odd(n):
-        s.add(score(round_slots[n - 1]) - score(round_slots[n]) <= maximum)
-  return maximum
-
-
-def PerPlayerSquaredSumMismatch(s, slots, players, scores):
-  """Returns badness metric sum ((player total mismatch sum) squared)."""
-  mismatches = [
-      z3.Function('signed_mismatch_' + str(r), z3.IntSort(), z3.IntSort())
-      for r in range(len(slots))]
-  for round_slots, round_mismatch in zip(slots, mismatches):
-    for n, slot in enumerate(round_slots):
-      if Odd(n):
-        player = slot
-        opponent = round_slots[n - 1]
-        s.add(round_mismatch(opponent) == -round_mismatch(player),
-              round_mismatch(player) ==
-              scores[opponent] - scores[player])
-      # TODO(cjc): odd players in a round
-
-  def SignedMismatchSum(player):
-    return z3.Sum(*[round_mismatch(player) for round_mismatch in mismatches])
-
-  return z3.Sum([SignedMismatchSum(player_id) *
-                 SignedMismatchSum(player_id)
-                 for player_id in players.values()])
-
+  terms = []
+  sq_terms = []
+  for n, row in slots.items():
+    for m, slot in row.items():
+      if n < m:
+        terms.append(z3.If(slot, (scores[m] - scores[n]), 0))
+        sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
+  return z3.Sum(terms), z3.Sum(sq_terms)
 
 try:
   file('dat')
 except IOError:
   cPickle.dump(Fetch(), file('dat', 'w'))
-groups, previous_pairings, total_mismatch, player_mismatch = cPickle.load(
-    file('dat'))
+groups, previous_pairings, requested_matches = cPickle.load(file('dat'))
 
-g_star = reversed(list(itertools.chain(*groups)))
+g_star = list(reversed(list(itertools.chain(*groups))))
 players = {name: id for (id, (score, name)) in zip(itertools.count(), g_star)}
 scores = {id: score for (id, (score, name)) in zip(itertools.count(), g_star)}
-if Odd(len(players)):
-  players[BYE] = len(players)
-  scores[players[BYE]] = 0
 
 reverse_players = {number: name for name, number in players.items()}
 player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
@@ -273,19 +170,16 @@ for a, b in previous_pairings:
 
 def Search(seconds=180, enumeration=None):
   """Constructs an SMT problem for pairings and solves it."""
+  # import pdb; pdb.set_trace()
   s = z3.Solver()
   s.push()
   slots = MakeSlots(s, len(players), 3)
-  played = MakePlayedFunction(s, slots, previous_pairings, players)
-  NoRepeatMatches(s, slots, played)
+  NoRepeatMatches(s, slots, previous_pairings)
   all_metrics = []
-  mismatch_sum_result = list(MismatchSum(slots, scores))
+  mismatch_sum_result = [MismatchSum(slots, scores)]
   for _, squared_mismatch in mismatch_sum_result:
     all_metrics.append(squared_mismatch)
     # all_metrics.append(linear_mismatch)
-  # all_metrics.append(
-  #  PerPlayerAbsoluteMismatchSumSquared(slots, players, scores))
-  # all_metrics.append(PerPlayerSquaredSumMismatch(s, slots, players, scores))
   metrics = all_metrics[:]
 
   deadline = time.time() + seconds
@@ -343,7 +237,7 @@ def Search(seconds=180, enumeration=None):
 
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot]
-                for r in slots for d in r.values()
+                for d in slots.values()
                 for slot in d.values()])
 
 
@@ -367,21 +261,18 @@ def AllOptimalModels(s, slots, deadline=None):
 
 
 def PrintModel(slots, scores, model):
-  for r, round_slots in enumerate(slots):
-    print 'Round', r + 1
-    for n, row in reversed(round_slots.items()):
-      for m, playing in reversed(row.items()):
-        if str(model.evaluate(playing)) == 'True':
-          player = reverse_players[m]
-          opponent = reverse_players[n]
-          print '{:>4} {:>20} vs. {:<20} {:>4}'.format(
-              '({})'.format(scores[m]), player, opponent,
-              '({})'.format(scores[n]))
+  for n, row in reversed(slots.items()):
+    for m, playing in reversed(row.items()):
+      if str(model.evaluate(playing)) == 'True':
+        player = reverse_players[m]
+        opponent = reverse_players[n]
+        print '{:>6} {:>20} vs. {:<20} {:>6}'.format(
+            '({})'.format(scores[m]), player, opponent,
+            '({})'.format(scores[n]))
 
 
 def ModelPlayers(slots, model):
-  for round_slots in slots:
-    for n, row in reversed(round_slots.items()):
-      for m, playing in reversed(row.items()):
-        if str(model.evaluate(playing)) == 'True':
-          yield (reverse_players[m], reverse_players[n])
+  for n, row in reversed(slots.items()):
+    for m, playing in reversed(row.items()):
+      if str(model.evaluate(playing)) == 'True':
+        yield (reverse_players[m], reverse_players[n])
