@@ -23,6 +23,28 @@ limit = 40320
 BYE = 'BYE'
 
 
+class NamedStack(z3.Solver):
+  def __init__(self, *args, **kwargs):
+    super(NamedStack, self).__init__(*args, **kwargs)
+    self._names = {}
+    self._depth = 0
+
+  def push(self, name=None):
+    if name:
+      self._names[name] = self._depth
+    super(NamedStack, self).push()
+    self._depth += 1
+
+  def pop(self, name=None):
+    if name:
+      while self._depth > self._names[name]:
+        super(NamedStack, self).pop()
+        self._depth -= 1
+      self._names.pop(name)
+    else:
+      super(NamedStack, self).pop()
+
+
 def Take(n, iterable):
   """Returns first n items of the iterable as a list."""
   return list(itertools.islice(iterable, n))
