@@ -54,33 +54,49 @@ def Fetch():
   spreadsheet = GetSpreadsheet()
   standings = spreadsheet.worksheet('Standings')
   names = standings.col_values(2)[1:]
-  names.append(BYE)
-  scores = [int(s) for s in standings.col_values(4)[1:]]
+  wins, losses, draws = [
+    [int(n) for n in standings.col_values(4 + c)[1:]]
+    for c in range(3)]
+  scores = [fractions.Fraction(3 * w, 3 * (w + l + d))
+            for w, l, d in zip(wins, losses, draws)]
+  lcm = reduce(Lcm, set(score.denominator for score in scores))
+  print 'lcm is', lcm
+  scores = [int(score * lcm) for score in scores]
+  requested_matches = [int(s) for s in standings.col_values(
+    9 + cycle_to_pair - 1)[1:]]
 
   previous_pairings = set()
-  partial_scores = dict.fromkeys(names, 0)
-  total_mismatch = 0
-  player_mismatch = dict.fromkeys(names, 0)
 
   for i in range(1, num_cycles_previous + 1):
     cycle = spreadsheet.worksheet('Cycle {}'.format(i))
-    a = cycle.col_values(3)[1:]
-    b = cycle.col_values(4)[1:]
-    winners = cycle.col_values(7)[1:]
+    a = cycle.col_values(2)[1:]
+    b = cycle.col_values(3)[1:]
+    winners = cycle.col_values(6)[1:]
+
     previous_pairings |= set(zip(a, b))
     previous_pairings |= set(zip(b, a))
 
-    groups = [list(group) for _, group in
-              itertools.groupby(sorted(zip(scores, names), reverse=True),
-                                key=lambda (s, n): s)]
-  return groups, previous_pairings, total_mismatch, player_mismatch
+  if Odd(sum(requested_matches)):
+    targetted_for_bye = 3
+    candidates = [
+      (i, name) for i, (name, request) in enumerate(zip(names, requested_matches))
+      if requested_matches[i] == targetted_for_bye and
+      (name, BYE) not in previous_pairings]
+    byed_i, byed_name = random.choice(candidates)
+    requested_matches[byed_i] -= 1
+    print byed_name, 'receives a bye.'
+
+  groups = [list(group) for _, group in
+            itertools.groupby(sorted(zip(scores, names), reverse=True),
+                              key=lambda (s, n): s)]
+  return groups, previous_pairings, requested_matches
 
 
 def Writeback(pairings):
   spreadsheet = GetSpreadsheet()
   ws_name = 'Cycle ' + str(cycle_to_pair)
   output = spreadsheet.worksheet(ws_name)
-  pairings_range = output.range('C2:D' + str(len(pairings) + 1))
+  pairings_range = output.range('B2:C' + str(len(pairings) + 1))
   for cell, player in zip(
       pairings_range, (player for row in pairings for player in row)):
     cell.value = player
