@@ -229,6 +229,7 @@ def Search(seconds=180, enumeration=None):
   s.push()
   slots = MakeSlots(len(players), 3)
   NoRepeatMatches(s, slots, previous_pairings)
+  deadline = time.time() + seconds
   all_metrics = []
   mismatch_sum_result = [MismatchSum(slots, scores)]
   for _, squared_mismatch in mismatch_sum_result:
@@ -244,7 +245,6 @@ def Search(seconds=180, enumeration=None):
     for term in RequestedMatches(slots, guaranteed, my_requested_matches):
       s.add(term)
 
-    deadline = time.time() + seconds
     while True:
       s.set('soft_timeout', Timeleft(deadline) * 1000)
       status = s.check()
