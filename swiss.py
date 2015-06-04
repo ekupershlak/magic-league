@@ -14,13 +14,14 @@ import z3
 import password
 
 sheets_spreadsheet = 'magic-ny DTK Sealed League'
-cycle_to_pair = 3
+cycle_to_pair = 4
 num_cycles_previous = cycle_to_pair - 1
 limit = 40320
 BYE = 'BYE'
 
 
 class NamedStack(z3.Solver):
+
   def __init__(self, *args, **kwargs):
     z3.Solver.__init__(self, *args, **kwargs)
     self._names = {}
@@ -75,15 +76,15 @@ def Fetch():
   standings = spreadsheet.worksheet('Standings')
   names = standings.col_values(2)[1:]
   wins, losses, draws = [
-    [int(n) for n in standings.col_values(4 + c)[1:]]
-    for c in range(3)]
+      [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
+  ]
   scores = [fractions.Fraction(3 * w, 3 * (w + l + d))
             for w, l, d in zip(wins, losses, draws)]
   lcm = reduce(Lcm, set(score.denominator for score in scores))
   print 'lcm is', lcm
   scores = [int(score * lcm) for score in scores]
   requested_matches = [int(s) for s in standings.col_values(
-    9 + cycle_to_pair - 1)[1:]][::-1]
+      9 + cycle_to_pair - 1)[1:]][::-1]
 
   previous_pairings = set()
 
@@ -99,9 +100,11 @@ def Fetch():
   if Odd(sum(requested_matches)):
     targetted_for_bye = 3
     candidates = [
-      (i, name) for i, (name, request) in enumerate(zip(names, requested_matches))
-      if requested_matches[i] == targetted_for_bye and
-      (name, BYE) not in previous_pairings]
+        (i, name)
+        for i, (name, request) in enumerate(zip(names, requested_matches))
+        if requested_matches[i] == targetted_for_bye and (
+            name, BYE) not in previous_pairings
+    ]
     byed_i, byed_name = random.choice(candidates)
     requested_matches[byed_i] -= 1
     print byed_name, 'receives a bye.'
@@ -130,12 +133,13 @@ def MakeSlots(n_players, r_rounds):
         slots[n][m] = z3.Bool('m_{},{}'.format(n, m))
   return slots
 
+
 def RequestedMatches(slots, guaranteed, requested_matches):
   n_players = len(slots) + 1
   print requested_matches
   odd = Odd(len([i for i, rm in enumerate(requested_matches) if rm > 0]))
   last_with_surplus = odd and max(
-    i for i, rm in enumerate(requested_matches) if rm > 1)
+      i for i, rm in enumerate(requested_matches) if rm > 1)
   for n in range(n_players):
     n_adjacency = []
     for m in range(n_players):
@@ -150,13 +154,14 @@ def RequestedMatches(slots, guaranteed, requested_matches):
         yield z3.Or(n_adjacency)
         for n_ in n_adjacency:
           yield z3.Implies(n_, z3.Not(z3.Or(
-            [m_ for m_ in n_adjacency if m_ is not n_])))
+              [m_ for m_ in n_adjacency if m_ is not n_])))
       else:
         yield matches_to_assign == z3.Sum(
-          [z3.If(match, 1, 0) for match in n_adjacency])
+            [z3.If(match, 1, 0) for match in n_adjacency])
       requested_matches[n] -= matches_to_assign
     else:
       yield z3.Not(z3.Or(n_adjacency))
+
 
 def RequestedMatchesAll(slots):
   n_players = len(slots) + 1
@@ -188,15 +193,23 @@ def MismatchSum(slots, scores):
         sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
   return z3.Sum(terms), z3.Sum(sq_terms)
 
+
 try:
   file('dat')
 except IOError:
   cPickle.dump(Fetch(), file('dat', 'w'))
-names_and_scores, previous_pairings, requested_matches = cPickle.load(file('dat'))
+names_and_scores, previous_pairings, requested_matches = cPickle.load(
+    file('dat'))
 names_and_scores = list(reversed(names_and_scores))
 
-players = {name: id for (id, (name, score)) in zip(itertools.count(), names_and_scores)}
-scores = {id: score for (id, (name, score)) in zip(itertools.count(), names_and_scores)}
+players = {
+    name: id
+    for (id, (name, score)) in zip(itertools.count(), names_and_scores)
+}
+scores = {
+    id: score
+    for (id, (name, score)) in zip(itertools.count(), names_and_scores)
+}
 
 reverse_players = {number: name for name, number in players.items()}
 player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
@@ -204,6 +217,7 @@ player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
 
 def RemoveBye(l):
   return [p for p in l if p != BYE]
+
 
 opponents = {}
 for a, b in previous_pairings:
@@ -248,10 +262,12 @@ def Search(seconds=180, enumeration=None):
       if status == z3.sat:
         model = s.model()
         badness = model.evaluate(metric)
-        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(m)
+                                         for m in all_metrics))
         s.push()
         if Timeleft(deadline) > 0:
-          print 'Time left:', str(datetime.timedelta(seconds=Timeleft(deadline)))
+          print 'Time left:', str(
+              datetime.timedelta(seconds=Timeleft(deadline)))
           s.add(metric < badness)
         else:
           print 'Time limit reached.'
@@ -259,7 +275,8 @@ def Search(seconds=180, enumeration=None):
           break
       elif status == z3.unsat:
         print 'OPTIMAL!'
-        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(m)
+                                         for m in all_metrics))
         s.pop()
         s.push()
         break
@@ -278,12 +295,12 @@ def Search(seconds=180, enumeration=None):
         break
     for n in slots:
       for m in slots[n]:
-        if str(model.evaluate(slots[n][m])) == 'True' and (n, m) not in guaranteed:
+        if str(model.evaluate(slots[n][m])) == 'True' and (n,
+                                                           m) not in guaranteed:
           guaranteed.add((n, m))
     s.pop('start_round')
     s.push()
     s.add([slots[n][m] for n, m in guaranteed])
-
 
   winning_model = model
   if enumeration and status in (z3.unsat, z3.unknown):
@@ -303,8 +320,7 @@ def Search(seconds=180, enumeration=None):
 
 def NegateModel(slots, model):
   return z3.Or([slot != model[slot]
-                for d in slots.values()
-                for slot in d.values()])
+                for d in slots.values() for slot in d.values()])
 
 
 def AllOptimalModels(s, slots, deadline=None):
