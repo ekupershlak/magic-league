@@ -5,17 +5,14 @@ from __future__ import division
 import collections
 import cPickle
 import datetime
-import itertools
 import fractions
+import itertools
 import random
 import time
 
-import gspread
 import z3
 import password
 
-sheets_account = 'chrisconnett@gmail.com'
-sheets_password = password.sheets_password
 sheets_spreadsheet = 'magic-ny DTK Sealed League'
 cycle_to_pair = 3
 num_cycles_previous = cycle_to_pair - 1
@@ -62,13 +59,13 @@ def Even(n):
 def Lcm(a, b):
   return a * b / fractions.gcd(a, b)
 
+
 def Timeleft(deadline):
   return int(deadline - time.time() + 0.5)
 
 
 def GetSpreadsheet():
-  session = gspread.login(sheets_account, sheets_password)
-  return session.open(sheets_spreadsheet)
+  return password.gc.open(sheets_spreadsheet)
 
 
 def Fetch():
