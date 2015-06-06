@@ -78,8 +78,8 @@ def Fetch():
   wins, losses, draws = [
       [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
   ]
-  scores = [fractions.Fraction(3 * w, 3 * (w + l + d))
-            for w, l, d in zip(wins, losses, draws)]
+  scores = [fractions.Fraction(3 * w, 3 * (w + l + d)) if w + l + d else
+            fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
   lcm = reduce(Lcm, set(score.denominator for score in scores))
   print 'lcm is', lcm
   scores = [int(score * lcm) for score in scores]
