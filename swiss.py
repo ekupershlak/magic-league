@@ -82,7 +82,7 @@ def Fetch():
             fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
   lcm = reduce(Lcm, set(score.denominator for score in scores))
   print 'lcm is', lcm
-  scores = [int(score * lcm) for score in scores]
+  # scores = [score.limit_denominator(100) for score in scores]
   requested_matches = [int(s) for s in standings.col_values(
       9 + cycle_to_pair - 1)[1:]][::-1]
 
@@ -189,8 +189,12 @@ def MismatchSum(slots, scores):
   for n, row in slots.items():
     for m, slot in row.items():
       if n < m:
-        terms.append(z3.If(slot, (scores[m] - scores[n]), 0))
-        sq_terms.append(z3.If(slot, (scores[m] - scores[n]) ** 2, 0))
+        diff = (scores[m] - scores[n]) ** 2
+        diff = round(diff, 2)
+        diff = fractions.Fraction(diff).limit_denominator(1000)
+        terms.append(z3.If(slot, 1, 0))
+        sq_terms.append(z3.If(slot, diff.numerator * 1000 / diff.denominator,
+                              0))
   return z3.Sum(terms), z3.Sum(sq_terms)
 
 
