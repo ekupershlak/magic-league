@@ -1,5 +1,7 @@
-import sys
+"""Randomly pairs players for initial rounds of Magic league."""
+
 import random
+
 
 def PreviousOpponents(player, rounds):
   for r in rounds:
@@ -13,11 +15,13 @@ def MakeRound(players, rounds):
   while len(players) >= 2:
     player = random.choice(players)
     players.remove(player)
-    opp = random.choice(list(set(players) - set(PreviousOpponents(player, rounds))))
+    opp = random.choice(list(set(players) - set(PreviousOpponents(player,
+                                                                  rounds))))
     players.remove(opp)
     yield (player, opp)
   if players:
     yield (list(players)[0], 'BYE')
+
 
 players = [
 ('Alan Strohm', 0),
@@ -108,8 +112,8 @@ rounds = [
 print list(MakeRound(players, []))
 
 for i in range(3):
-  rounds.append(list(MakeRound([player for (player, n) in players if i < n],
-                                rounds)))
+  rounds.append(list(MakeRound(
+      [player for (player, n) in players if i < n], rounds)))
 
 for i, round in enumerate(rounds[1:]):
   print
