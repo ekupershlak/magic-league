@@ -117,8 +117,8 @@ def Writeback(pairings):
   ws_name = 'Cycle ' + str(cycle_to_pair)
   output = spreadsheet.worksheet(ws_name)
   pairings_range = output.range('B2:C' + str(len(pairings) + 1))
-  for cell, player in zip(
-      pairings_range, (player for row in pairings for player in row)):
+  for cell, player in zip(pairings_range,
+                          (player for row in pairings for player in row)):
     cell.value = player
   print 'Writing to', ws_name
   output.update_cells(pairings_range)
@@ -138,8 +138,9 @@ def RequestedMatches(slots, guaranteed, requested_matches):
   n_players = len(slots) + 1
   print requested_matches
   odd = Odd(len([i for i, rm in enumerate(requested_matches) if rm > 0]))
-  last_with_surplus = odd and max(
-      i for i, rm in enumerate(requested_matches) if rm > 1)
+  last_with_surplus = odd and max(i
+                                  for i, rm in enumerate(requested_matches)
+                                  if rm > 1)
   for n in range(n_players):
     n_adjacency = []
     for m in range(n_players):
@@ -153,11 +154,11 @@ def RequestedMatches(slots, guaranteed, requested_matches):
       if matches_to_assign == 1:
         yield z3.Or(n_adjacency)
         for n_ in n_adjacency:
-          yield z3.Implies(n_, z3.Not(z3.Or(
-              [m_ for m_ in n_adjacency if m_ is not n_])))
+          yield z3.Implies(
+              n_, z3.Not(z3.Or([m_ for m_ in n_adjacency if m_ is not n_])))
       else:
-        yield matches_to_assign == z3.Sum(
-            [z3.If(match, 1, 0) for match in n_adjacency])
+        yield matches_to_assign == z3.Sum([z3.If(match, 1, 0)
+                                           for match in n_adjacency])
       requested_matches[n] -= matches_to_assign
     else:
       yield z3.Not(z3.Or(n_adjacency))
@@ -189,7 +190,7 @@ def MismatchSum(slots, scores):
   for n, row in slots.items():
     for m, slot in row.items():
       if n < m:
-        diff = (scores[m] - scores[n]) ** 2
+        diff = (scores[m] - scores[n])**2
         diff = round(diff, 2)
         diff = fractions.Fraction(diff).limit_denominator(1000)
         terms.append(z3.If(slot, 1, 0))
@@ -202,8 +203,8 @@ try:
   file('dat')
 except IOError:
   cPickle.dump(Fetch(), file('dat', 'w'))
-names_and_scores, previous_pairings, requested_matches = cPickle.load(
-    file('dat'))
+names_and_scores, previous_pairings, requested_matches = cPickle.load(file(
+    'dat'))
 names_and_scores = list(reversed(names_and_scores))
 
 players = {
@@ -270,8 +271,8 @@ def Search(seconds=180, enumeration=None):
                                          for m in all_metrics))
         s.push()
         if Timeleft(deadline) > 0:
-          print 'Time left:', str(
-              datetime.timedelta(seconds=Timeleft(deadline)))
+          print 'Time left:', str(datetime.timedelta(seconds=Timeleft(
+              deadline)))
           s.add(metric < badness)
         else:
           print 'Time limit reached.'
@@ -323,8 +324,8 @@ def Search(seconds=180, enumeration=None):
 
 
 def NegateModel(slots, model):
-  return z3.Or([slot != model[slot]
-                for d in slots.values() for slot in d.values()])
+  return z3.Or([slot != model[slot] for d in slots.values() for slot in
+                d.values()])
 
 
 def AllOptimalModels(s, slots, deadline=None):
@@ -352,9 +353,9 @@ def PrintModel(slots, scores, model):
       if str(model.evaluate(playing)) == 'True':
         player = reverse_players[m]
         opponent = reverse_players[n]
-        print '{:>6} {:>20} vs. {:<20} {:>6}'.format(
-            '({})'.format(scores[m]), player, opponent,
-            '({})'.format(scores[n]))
+        print '{:>6} {:>20} vs. {:<20} {:>6}'.format('({})'.format(scores[m]),
+                                                     player, opponent,
+                                                     '({})'.format(scores[n]))
 
 
 def ModelPlayers(slots, model):
