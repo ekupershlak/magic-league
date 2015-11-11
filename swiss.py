@@ -102,12 +102,13 @@ def EnumeratedPopCount(vs, n):
     return z3.Or(options)
 
 
-def RequestedMatches(slots, requested_matches):
+def RequestedMatches(slots, requested_matches, reverse_players):
   """Guarantees players get their requested number of matches.
 
   Args:
     slots: slot variables
     requested_matches: the number of matches each player has requested
+    reverse_players: the reverse_players dict
   Yields:
     Terms over slots (to be added to a Solver) that guarantees players have
     their requested number of matches.
@@ -116,7 +117,7 @@ def RequestedMatches(slots, requested_matches):
   n_players = len(slots) + 1
 
   for n in range(n_players):
-    ## print reverse_players[n], 'requests', requested_matches[n], 'matches'
+    print reverse_players[n], 'requests', requested_matches[n], 'matches'
     n_adjacency = []
     for m in range(n_players):
       if n < m:
@@ -157,15 +158,19 @@ class Pairer(object):
     self.set_code = set_code
     self.cycle = cycle
 
-    names_scores_matches, self.previous_pairings = self.Fetch()
+    names_scores_matches, self.previous_pairings = self._Fetch()
     self.players = {
         name: id
-        for (id, (name, score)) in zip(itertools.count(), names_scores_matches)
+        for (id, (name, _, _)) in zip(itertools.count(), names_scores_matches)
     }
 
     self.scores = {
         id: score
-        for (id, (name, score)) in zip(itertools.count(), names_scores_matches)
+        for (id, (_, score, _)) in zip(itertools.count(), names_scores_matches)
+    }
+    self.requested_matches = {
+        id: m
+        for (id, (_, _, m)) in zip(itertools.count(), names_scores_matches)
     }
 
     self.reverse_players = {number: name
@@ -183,7 +188,8 @@ class Pairer(object):
     deadline = time.time() + seconds
     _, metric = MismatchSum(slots, self.scores)
 
-    for term in RequestedMatches(slots, self.requested_matches):
+    for term in RequestedMatches(slots, self.requested_matches,
+                                 self.reverse_players):
       s.add(term)
 
     while True:
@@ -237,7 +243,7 @@ class Pairer(object):
     print('Writing to', ws_name)
     output.update_cells(pairings_range)
 
-  def Fetch(self, from_cache=True):
+  def _Fetch(self, from_cache=True):
     """Fetches data from local file, falling back to the spreadsheet."""
 
     if from_cache:
@@ -245,13 +251,13 @@ class Pairer(object):
         return pickle.load(open(self.set_code))
       except IOError:
         pass
-    names_scores_matches, previous_pairings = self._Fetch()
+    names_scores_matches, previous_pairings = self._FetchFromSheet()
     pickle.dump(
         (names_scores_matches, previous_pairings), open(self.set_code, 'w'))
 
     return names_scores_matches, previous_pairings
 
-  def _Fetch(self):
+  def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
 
     spreadsheet = self.GetSpreadsheet()
@@ -311,8 +317,9 @@ class Pairer(object):
         if str(model.evaluate(playing)) == 'True':
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
-          print('{:>6} {:>20} vs. {:<20} {:>6}'.format('({})'.format(
-              self.scores[m]), player, opponent, '({})'.format(self.scores[n])))
+          print('{:>6} {:>20} vs. {:<20} {:>6}'.format(
+              '({})'.format(self.scores[m]), player, opponent,
+              '({})'.format(self.scores[n])))
 
   def ModelPlayers(self, slots, model):
     for n, row in reversed(list(slots.items())):
