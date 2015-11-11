@@ -134,14 +134,43 @@ def MakeSlots(n_players, r_rounds):
   return slots
 
 
+def ExactlyOne(vs):
+  at_least_one = z3.Or(vs)
+  at_most_one = z3.And([z3.Implies(v, z3.Not(z3.Or([w for w in vs if w is not v
+                                                   ]))) for v in vs])
+  return z3.And(at_least_one, at_most_one)
+
+
+def PopCount(vs, n):
+  if n == 0:
+    return z3.Not(z3.Or(vs))
+  else:
+    terms = [z3.Or(vs)]
+    for i, v in enumerate(vs):
+      before = vs[:i]
+      after = vs[i + 1:]
+      terms.append(z3.Or([z3.And(
+          z3.Implies(v, PopCount(before, a)), z3.Implies(v, PopCount(
+              after, n - 1 - a))) for a in range(n)]))
+    return z3.And(terms)
+
+
+def EnumeratedPopCount(vs, n):
+  if n == 0:
+    return z3.Not(z3.Or(vs))
+  else:
+    options = []
+    for combo in itertools.combinations(enumerate(vs), n):
+      options.append(z3.And([v if (i, v) in combo else z3.Not(v)
+                             for (i, v) in enumerate(vs)]))
+    return z3.Or(options)
+
+
 def RequestedMatches(slots, guaranteed, requested_matches):
   n_players = len(slots) + 1
-  print requested_matches
-  odd = Odd(len([i for i, rm in enumerate(requested_matches) if rm > 0]))
-  last_with_surplus = odd and max(i
-                                  for i, rm in enumerate(requested_matches)
-                                  if rm > 1)
+
   for n in range(n_players):
+    print reverse_players[n], 'requests', requested_matches[n], 'matches'
     n_adjacency = []
     for m in range(n_players):
       if (n, m) not in guaranteed and (m, n) not in guaranteed:
@@ -149,19 +178,10 @@ def RequestedMatches(slots, guaranteed, requested_matches):
           n_adjacency.append(slots[n][m])
         elif n > m:
           n_adjacency.append(slots[m][n])
-    if requested_matches[n] > 0:
-      matches_to_assign = 1 + (odd and n == last_with_surplus)
-      if matches_to_assign == 1:
-        yield z3.Or(n_adjacency)
-        for n_ in n_adjacency:
-          yield z3.Implies(
-              n_, z3.Not(z3.Or([m_ for m_ in n_adjacency if m_ is not n_])))
-      else:
-        yield matches_to_assign == z3.Sum([z3.If(match, 1, 0)
-                                           for match in n_adjacency])
-      requested_matches[n] -= matches_to_assign
-    else:
-      yield z3.Not(z3.Or(n_adjacency))
+    # yield PopCount(n_adjacency, requested_matches[n])
+    yield EnumeratedPopCount(n_adjacency, requested_matches[n])
+  for i, _ in enumerate(requested_matches):
+    requested_matches[i] = 0
 
 
 def RequestedMatchesAll(slots):
