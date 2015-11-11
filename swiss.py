@@ -183,13 +183,7 @@ class Pairer(object):
     slots = MakeSlots(len(self.players))
     NoRepeatMatches(s, slots, self.previous_pairings, self.reverse_players)
     deadline = time.time() + seconds
-    all_metrics = []
-    mismatch_sum_result = [MismatchSum(slots, self.scores)]
-    for _, squared_mismatch in mismatch_sum_result:
-      all_metrics.append(squared_mismatch)
-      # all_metrics.append(linear_mismatch)
-    metrics = all_metrics[:]
-    metric = metrics.pop(0)
+    _, metric = MismatchSum(slots, self.scores)
 
     for term in RequestedMatches(slots, self.requested_matches):
       s.add(term)
@@ -200,8 +194,7 @@ class Pairer(object):
       if status == z3.sat:
         model = s.model()
         badness = model.evaluate(metric)
-        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in
-                                         all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(metric)))
         s.push()
         if Timeleft(deadline) > 0:
           print 'Time left:', str(datetime.timedelta(seconds=Timeleft(
@@ -219,18 +212,10 @@ class Pairer(object):
           print 'You dun goofed.'
           return
         print 'OPTIMAL!'
-        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in
-                                         all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(metric)))
         s.pop()
         s.push()
         break
-        ## try:
-        ##   metric = metrics.pop(0)
-        ##   s.push()
-        ##   badness = model.evaluate(metric)
-        ##   s.add(metric < badness)
-        ## except IndexError:
-        ##   break
       else:
         print 'Time limit reached.'
         s.pop()
@@ -240,7 +225,7 @@ class Pairer(object):
 
     self._PrintModel(slots, self.scores, model)
     print
-    print 'Badness:', tuple(model.evaluate(m) for m in all_metrics)
+    print 'Badness:', model.evaluate(metric)
     return list(self.ModelPlayers(slots, model))
 
   def Writeback(self, pairings):
@@ -337,46 +322,3 @@ class Pairer(object):
       for m, playing in reversed(row.items()):
         if str(model.evaluate(playing)) == 'True':
           yield (self.reverse_players[m], self.reverse_players[n])
-
-
-def RemoveBye(l):
-  return [p for p in l if p != BYE]
-
-
-opponents = {}
-
-# for a, b in previous_pairings:
-#   if b != BYE:
-#     opponents.setdefault(a, []).append(b)
-## omw = {
-##     player: max(1 / 3.,
-##                 sum(player_scores[opponent] -
-##                     3 if BYE in opponents[player] else 0 /
-##                     (3 * len(RemoveBye(opponents[player])))
-##                     for opponent in opponents[player] if opponent != BYE) /
-##                 len(RemoveBye(opponents[player])))
-##     for player in players if player != BYE}
-
-
-def NegateModel(slots, model):
-  return z3.Or([slot != model[slot] for d in slots.values() for slot in
-                d.values()])
-
-
-def AllOptimalModels(s, slots, deadline=None):
-  try:
-    s.push()
-    while True:
-      if deadline:
-        if Timeleft(deadline) > 0:
-          s.set('soft_timeout', Timeleft(deadline) * 1000)
-        else:
-          return
-      if s.check() == z3.sat:
-        model = s.model()
-        yield model
-        s.add(NegateModel(slots, model))
-      else:
-        break
-  finally:
-    s.pop()
