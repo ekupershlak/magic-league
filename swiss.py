@@ -235,6 +235,7 @@ except IOError:
 names_and_scores, previous_pairings, requested_matches = cPickle.load(file(
     'dat'))
 names_and_scores = list(reversed(names_and_scores))
+requested_matches = list(reversed(requested_matches))
 
 players = {
     name: id
