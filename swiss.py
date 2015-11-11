@@ -16,7 +16,6 @@ import password
 sheets_spreadsheet = 'magic-ny DTK Sealed League'
 cycle_to_pair = 4
 num_cycles_previous = cycle_to_pair - 1
-limit = 40320
 BYE = 'BYE'
 
 
@@ -80,11 +79,21 @@ def Fetch():
   ]
   scores = [fractions.Fraction(3 * w, 3 * (w + l + d)) if w + l + d else
             fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
-  lcm = reduce(Lcm, set(score.denominator for score in scores))
+  lcm = 1
+  for d in set(score.denominator for score in scores):
+    lcm = Lcm(lcm, d)
   print 'lcm is', lcm
-  # scores = [score.limit_denominator(100) for score in scores]
-  requested_matches = [int(s) for s in standings.col_values(
-      9 + cycle_to_pair - 1)[1:]][::-1]
+
+  requested_matches = [int(s)
+                       for s in standings.col_values(9 + cycle_to_pair - 1)[1:]]
+  names, requested_matches = zip(*[(n, rm)
+                                   for (n, rm) in zip(names, requested_matches)
+                                   if 0 < rm <= 3])
+  names = list(names)
+  requested_matches = list(requested_matches)
+  print zip(names, requested_matches)
+  print requested_matches
+  print sum(requested_matches)
 
   previous_pairings = set()
 
