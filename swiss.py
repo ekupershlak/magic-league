@@ -13,13 +13,11 @@ import time
 import z3
 import password
 
-sheets_spreadsheet = 'magic-ny DTK Sealed League'
-cycle_to_pair = 4
-num_cycles_previous = cycle_to_pair - 1
 BYE = 'BYE'
 
 
 class NamedStack(z3.Solver):
+  """A z3.Solver that supports pushing and popping to named frames."""
 
   def __init__(self, *args, **kwargs):
     z3.Solver.__init__(self, *args, **kwargs)
@@ -64,76 +62,7 @@ def Timeleft(deadline):
   return int(deadline - time.time() + 0.5)
 
 
-def GetSpreadsheet():
-  return password.gc.open(sheets_spreadsheet)
-
-
-def Fetch():
-  """Fetches data from the spreadsheet."""
-
-  spreadsheet = GetSpreadsheet()
-  standings = spreadsheet.worksheet('Standings')
-  names = standings.col_values(2)[1:]
-  wins, losses, draws = [
-      [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
-  ]
-  scores = [fractions.Fraction(3 * w, 3 * (w + l + d)) if w + l + d else
-            fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
-  lcm = 1
-  for d in set(score.denominator for score in scores):
-    lcm = Lcm(lcm, d)
-  print 'lcm is', lcm
-
-  requested_matches = [int(s)
-                       for s in standings.col_values(9 + cycle_to_pair - 1)[1:]]
-  names, requested_matches = zip(*[(n, rm)
-                                   for (n, rm) in zip(names, requested_matches)
-                                   if 0 < rm <= 3])
-  names = list(names)
-  requested_matches = list(requested_matches)
-  print zip(names, requested_matches)
-  print requested_matches
-  print sum(requested_matches)
-
-  previous_pairings = set()
-
-  for i in range(1, num_cycles_previous + 1):
-    cycle = spreadsheet.worksheet('Cycle {}'.format(i))
-    a = cycle.col_values(2)[1:]
-    b = cycle.col_values(3)[1:]
-    winners = cycle.col_values(6)[1:]
-
-    previous_pairings |= set(zip(a, b))
-    previous_pairings |= set(zip(b, a))
-
-  if Odd(sum(requested_matches)):
-    targetted_for_bye = 3
-    candidates = [
-        (i, name)
-        for i, (name, request) in enumerate(zip(names, requested_matches))
-        if requested_matches[i] == targetted_for_bye and (
-            name, BYE) not in previous_pairings
-    ]
-    byed_i, byed_name = random.choice(candidates)
-    requested_matches[byed_i] -= 1
-    print byed_name, 'receives a bye.'
-
-  return zip(names, scores), previous_pairings, requested_matches
-
-
-def Writeback(pairings):
-  spreadsheet = GetSpreadsheet()
-  ws_name = 'Cycle ' + str(cycle_to_pair)
-  output = spreadsheet.worksheet(ws_name)
-  pairings_range = output.range('B2:C' + str(len(pairings) + 1))
-  for cell, player in zip(pairings_range,
-                          (player for row in pairings for player in row)):
-    cell.value = player
-  print 'Writing to', ws_name
-  output.update_cells(pairings_range)
-
-
-def MakeSlots(n_players, r_rounds):
+def MakeSlots(n_players):
   """Creates output pairing variables."""
   slots = collections.defaultdict(dict)
   for n in range(n_players):
@@ -175,38 +104,32 @@ def EnumeratedPopCount(vs, n):
     return z3.Or(options)
 
 
-def RequestedMatches(slots, guaranteed, requested_matches):
+def RequestedMatches(slots, requested_matches):
+  """Guarantees players get their requested number of matches.
+
+  Args:
+    slots: slot variables
+    requested_matches: the number of matches each player has requested
+  Yields:
+    Terms over slots (to be added to a Solver) that guarantees players have
+    their requested number of matches.
+  """
+
   n_players = len(slots) + 1
 
   for n in range(n_players):
-    print reverse_players[n], 'requests', requested_matches[n], 'matches'
-    n_adjacency = []
-    for m in range(n_players):
-      if (n, m) not in guaranteed and (m, n) not in guaranteed:
-        if n < m:
-          n_adjacency.append(slots[n][m])
-        elif n > m:
-          n_adjacency.append(slots[m][n])
-    # yield PopCount(n_adjacency, requested_matches[n])
-    yield EnumeratedPopCount(n_adjacency, requested_matches[n])
-  for i, _ in enumerate(requested_matches):
-    requested_matches[i] = 0
-
-
-def RequestedMatchesAll(slots):
-  n_players = len(slots) + 1
-  for n in range(n_players):
+    ## print reverse_players[n], 'requests', requested_matches[n], 'matches'
     n_adjacency = []
     for m in range(n_players):
       if n < m:
         n_adjacency.append(slots[n][m])
       elif n > m:
         n_adjacency.append(slots[m][n])
-    yield requested_matches[n] == z3.Sum([z3.If(match, 1, 0)
-                                          for match in n_adjacency])
+    # yield PopCount(n_adjacency, requested_matches[n])
+    yield EnumeratedPopCount(n_adjacency, requested_matches[n])
 
 
-def NoRepeatMatches(s, slots, previous_pairings):
+def NoRepeatMatches(s, slots, previous_pairings, reverse_players):
   for n, row in slots.items():
     for m, _ in row.items():
       if (reverse_players[n], reverse_players[m]) in previous_pairings:
@@ -214,6 +137,7 @@ def NoRepeatMatches(s, slots, previous_pairings):
 
 
 def MismatchSum(slots, scores):
+  """Terms for sum of mismatch and squared mismatch."""
   terms = []
   sq_terms = []
   for n, row in slots.items():
@@ -228,67 +152,46 @@ def MismatchSum(slots, scores):
   return z3.Sum(terms), z3.Sum(sq_terms)
 
 
-try:
-  file('dat')
-except IOError:
-  cPickle.dump(Fetch(), file('dat', 'w'))
-names_and_scores, previous_pairings, requested_matches = cPickle.load(file(
-    'dat'))
-names_and_scores = list(reversed(names_and_scores))
-requested_matches = list(reversed(requested_matches))
+class Pairer(object):
+  """Manages pairing a cycle of a league."""
 
-players = {
-    name: id
-    for (id, (name, score)) in zip(itertools.count(), names_and_scores)
-}
-scores = {
-    id: score
-    for (id, (name, score)) in zip(itertools.count(), names_and_scores)
-}
+  def __init__(self, set_code, cycle):
+    self.set_code = set_code
+    self.cycle = cycle
 
-reverse_players = {number: name for name, number in players.items()}
-player_scores = {reverse_players[id]: score for (id, score) in scores.items()}
+    names_scores_matches, self.previous_pairings = self.Fetch()
+    self.players = {
+        name: id
+        for (id, (name, score)) in zip(itertools.count(), names_scores_matches)
+    }
 
+    self.scores = {
+        id: score
+        for (id, (name, score)) in zip(itertools.count(), names_scores_matches)
+    }
 
-def RemoveBye(l):
-  return [p for p in l if p != BYE]
+    self.reverse_players = {number: name
+                            for name, number in self.players.items()}
+    self.player_scores = {self.reverse_players[id]: score
+                          for (id, score) in self.scores.items()}
 
+  def Search(self, seconds=3600):
+    """Constructs an SMT problem for pairings and solves it."""
+    s = z3.Solver()
+    s = NamedStack()
+    s.push()
+    slots = MakeSlots(len(self.players))
+    NoRepeatMatches(s, slots, self.previous_pairings, self.reverse_players)
+    deadline = time.time() + seconds
+    all_metrics = []
+    mismatch_sum_result = [MismatchSum(slots, self.scores)]
+    for _, squared_mismatch in mismatch_sum_result:
+      all_metrics.append(squared_mismatch)
+      # all_metrics.append(linear_mismatch)
+    metrics = all_metrics[:]
+    metric = metrics.pop(0)
 
-opponents = {}
-for a, b in previous_pairings:
-  if b != BYE:
-    opponents.setdefault(a, []).append(b)
-## omw = {
-##     player: max(1 / 3.,
-##                 sum(player_scores[opponent] -
-##                     3 if BYE in opponents[player] else 0 /
-##                     (3 * len(RemoveBye(opponents[player])))
-##                     for opponent in opponents[player] if opponent != BYE) /
-##                 len(RemoveBye(opponents[player])))
-##     for player in players if player != BYE}
-
-
-def Search(seconds=180, enumeration=None):
-  """Constructs an SMT problem for pairings and solves it."""
-  s = z3.Solver()
-  s = NamedStack()
-  s.push()
-  slots = MakeSlots(len(players), 3)
-  NoRepeatMatches(s, slots, previous_pairings)
-  deadline = time.time() + seconds
-  all_metrics = []
-  mismatch_sum_result = [MismatchSum(slots, scores)]
-  for _, squared_mismatch in mismatch_sum_result:
-    all_metrics.append(squared_mismatch)
-    # all_metrics.append(linear_mismatch)
-  metrics = all_metrics[:]
-
-  metric = metrics.pop(0)
-  guaranteed = set()
-  my_requested_matches = requested_matches[:]
-  while any(my_requested_matches):
-    s.push('start_round')
-    for term in RequestedMatches(slots, guaranteed, my_requested_matches):
+    for term in RequestedMatches(slots, self.requested_matches):
       s.add(term)
 
     while True:
@@ -334,29 +237,125 @@ def Search(seconds=180, enumeration=None):
         s.push()
         s.add(metric <= badness)
         break
-    for n in slots:
-      for m in slots[n]:
-        if str(model.evaluate(slots[n][m])) == 'True' and (n,
-                                                           m) not in guaranteed:
-          guaranteed.add((n, m))
-    s.pop('start_round')
-    s.push()
-    s.add([slots[n][m] for n, m in guaranteed])
 
-  winning_model = model
-  if enumeration and status in (z3.unsat, z3.unknown):
-    total = 0
-    for i, m in enumerate(AllOptimalModels(s, slots, deadline + enumeration)):
-      print i
-      total += 1
-      if random.random() < 1.0 / total:
-        winning_model = m
-    print 'Total solutions found:', max(total, 1)
+    self._PrintModel(slots, self.scores, model)
+    print
+    print 'Badness:', tuple(model.evaluate(m) for m in all_metrics)
+    return list(self.ModelPlayers(slots, model))
 
-  PrintModel(slots, scores, winning_model)
-  print
-  print 'Badness:', tuple(winning_model.evaluate(m) for m in all_metrics)
-  return list(ModelPlayers(slots, winning_model))
+  def Writeback(self, pairings):
+    spreadsheet = self.GetSpreadsheet()
+    ws_name = 'Cycle ' + str(self.cycle)
+    output = spreadsheet.worksheet(ws_name)
+    pairings_range = output.range('B2:C' + str(len(pairings) + 1))
+    for cell, player in zip(pairings_range,
+                            (player for row in pairings for player in row)):
+      cell.value = player
+    print 'Writing to', ws_name
+    output.update_cells(pairings_range)
+
+  def Fetch(self, from_cache=True):
+    """Fetches data from local file, falling back to the spreadsheet."""
+
+    if from_cache:
+      try:
+        return cPickle.load(file(self.set_code))
+      except IOError:
+        pass
+    names_scores_matches, previous_pairings = self._Fetch()
+    cPickle.dump(
+        (names_scores_matches, previous_pairings), file(self.set_code, 'w'))
+
+    return names_scores_matches, previous_pairings
+
+  def _Fetch(self):
+    """Fetches data from the spreadsheet."""
+
+    spreadsheet = self.GetSpreadsheet()
+    standings = spreadsheet.worksheet('Standings')
+    names = standings.col_values(2)[1:]
+    wins, losses, draws = [
+        [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
+    ]
+    scores = [fractions.Fraction(3 * w, 3 * (w + l + d)) if w + l + d else
+              fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
+    lcm = 1
+    for d in set(score.denominator for score in scores):
+      lcm = Lcm(lcm, d)
+    print 'lcm is', lcm
+
+    requested_matches = [
+        int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
+    ]
+    names, requested_matches = zip(
+        *[(n, rm) for (n, rm) in zip(names, requested_matches) if 0 < rm <= 3])
+    names = list(names)
+    requested_matches = list(requested_matches)
+    print zip(names, requested_matches)
+
+    previous_pairings = set()
+
+    for i in range(1, self.cycle):
+      cycle = spreadsheet.worksheet('Cycle {}'.format(i))
+      a = cycle.col_values(2)[1:]
+      b = cycle.col_values(3)[1:]
+
+      previous_pairings |= set(zip(a, b))
+      previous_pairings |= set(zip(b, a))
+
+    if Odd(sum(requested_matches)):
+      targetted_for_bye = 3
+      candidates = [
+          (i, name)
+          for i, (name, n_requested) in enumerate(zip(names, requested_matches))
+          if n_requested == targetted_for_bye and (name, BYE
+                                                  ) not in previous_pairings
+      ]
+      byed_i, byed_name = random.choice(candidates)
+      requested_matches[byed_i] -= 1
+      print byed_name, 'receives a bye.'
+
+    names_scores_matches = zip(names, scores, requested_matches)
+    random.shuffle(names_scores_matches)
+    return names_scores_matches, previous_pairings
+
+  def GetSpreadsheet(self):
+    return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
+
+  def PrintModel(self, slots, model):
+    for n, row in reversed(slots.items()):
+      for m, playing in reversed(row.items()):
+        if str(model.evaluate(playing)) == 'True':
+          player = self.reverse_players[m]
+          opponent = self.reverse_players[n]
+          print '{:>6} {:>20} vs. {:<20} {:>6}'.format(
+              '({})'.format(self.scores[m]), player, opponent,
+              '({})'.format(self.scores[n]))
+
+  def ModelPlayers(self, slots, model):
+    for n, row in reversed(slots.items()):
+      for m, playing in reversed(row.items()):
+        if str(model.evaluate(playing)) == 'True':
+          yield (self.reverse_players[m], self.reverse_players[n])
+
+
+def RemoveBye(l):
+  return [p for p in l if p != BYE]
+
+
+opponents = {}
+
+# for a, b in previous_pairings:
+#   if b != BYE:
+#     opponents.setdefault(a, []).append(b)
+## omw = {
+##     player: max(1 / 3.,
+##                 sum(player_scores[opponent] -
+##                     3 if BYE in opponents[player] else 0 /
+##                     (3 * len(RemoveBye(opponents[player])))
+##                     for opponent in opponents[player] if opponent != BYE) /
+##                 len(RemoveBye(opponents[player])))
+##     for player in players if player != BYE}
 
 
 def NegateModel(slots, model):
@@ -381,21 +380,3 @@ def AllOptimalModels(s, slots, deadline=None):
         break
   finally:
     s.pop()
-
-
-def PrintModel(slots, scores, model):
-  for n, row in reversed(slots.items()):
-    for m, playing in reversed(row.items()):
-      if str(model.evaluate(playing)) == 'True':
-        player = reverse_players[m]
-        opponent = reverse_players[n]
-        print '{:>6} {:>20} vs. {:<20} {:>6}'.format('({})'.format(scores[m]),
-                                                     player, opponent,
-                                                     '({})'.format(scores[n]))
-
-
-def ModelPlayers(slots, model):
-  for n, row in reversed(slots.items()):
-    for m, playing in reversed(row.items()):
-      if str(model.evaluate(playing)) == 'True':
-        yield (reverse_players[m], reverse_players[n])
