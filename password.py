@@ -5,7 +5,7 @@ import json
 import gspread
 from oauth2client.client import SignedJwtAssertionCredentials
 
-json_key = json.load(file('magic-ny-pairings.json'))
+json_key = json.load(open('magic-ny-pairings.json'))
 scope = ['https://spreadsheets.google.com/feeds']
 
 credentials = SignedJwtAssertionCredentials(json_key['client_email'],

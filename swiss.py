@@ -1,12 +1,10 @@
 """Solver for swiss pairings."""
 
-from __future__ import division
-
 import collections
-import cPickle
 import datetime
 import fractions
 import itertools
+import pickle
 import random
 import time
 
@@ -130,8 +128,8 @@ def RequestedMatches(slots, requested_matches):
 
 
 def NoRepeatMatches(s, slots, previous_pairings, reverse_players):
-  for n, row in slots.items():
-    for m, _ in row.items():
+  for n, row in list(slots.items()):
+    for m, _ in list(row.items()):
       if (reverse_players[n], reverse_players[m]) in previous_pairings:
         s.add(z3.Not(slots[n][m]))
 
@@ -140,8 +138,8 @@ def MismatchSum(slots, scores):
   """Terms for sum of mismatch and squared mismatch."""
   terms = []
   sq_terms = []
-  for n, row in slots.items():
-    for m, slot in row.items():
+  for n, row in list(slots.items()):
+    for m, slot in list(row.items()):
       if n < m:
         diff = (scores[m] - scores[n])**2
         diff = round(diff, 2)
@@ -171,9 +169,9 @@ class Pairer(object):
     }
 
     self.reverse_players = {number: name
-                            for name, number in self.players.items()}
+                            for name, number in list(self.players.items())}
     self.player_scores = {self.reverse_players[id]: score
-                          for (id, score) in self.scores.items()}
+                          for (id, score) in list(self.scores.items())}
 
   def Search(self, seconds=3600):
     """Constructs an SMT problem for pairings and solves it."""
@@ -194,38 +192,38 @@ class Pairer(object):
       if status == z3.sat:
         model = s.model()
         badness = model.evaluate(metric)
-        print 'Badness: {}'.format(tuple(model.evaluate(metric)))
+        print('Badness: {}'.format(tuple(model.evaluate(metric))))
         s.push()
         if Timeleft(deadline) > 0:
-          print 'Time left:', str(datetime.timedelta(seconds=Timeleft(
-              deadline)))
+          print('Time left:',
+                str(datetime.timedelta(seconds=Timeleft(deadline))))
           s.add(metric < badness)
         else:
-          print 'Time limit reached.'
+          print('Time limit reached.')
           s.add(metric == badness)
           break
       elif status == z3.unsat:
         try:
           model
         except NameError:
-          print
-          print 'You dun goofed.'
+          print()
+          print('You dun goofed.')
           return
-        print 'OPTIMAL!'
-        print 'Badness: {}'.format(tuple(model.evaluate(metric)))
+        print('OPTIMAL!')
+        print('Badness: {}'.format(tuple(model.evaluate(metric))))
         s.pop()
         s.push()
         break
       else:
-        print 'Time limit reached.'
+        print('Time limit reached.')
         s.pop()
         s.push()
         s.add(metric <= badness)
         break
 
     self._PrintModel(slots, self.scores, model)
-    print
-    print 'Badness:', model.evaluate(metric)
+    print()
+    print('Badness:', model.evaluate(metric))
     return list(self.ModelPlayers(slots, model))
 
   def Writeback(self, pairings):
@@ -236,7 +234,7 @@ class Pairer(object):
     for cell, player in zip(pairings_range,
                             (player for row in pairings for player in row)):
       cell.value = player
-    print 'Writing to', ws_name
+    print('Writing to', ws_name)
     output.update_cells(pairings_range)
 
   def Fetch(self, from_cache=True):
@@ -244,12 +242,12 @@ class Pairer(object):
 
     if from_cache:
       try:
-        return cPickle.load(file(self.set_code))
+        return pickle.load(open(self.set_code))
       except IOError:
         pass
     names_scores_matches, previous_pairings = self._Fetch()
-    cPickle.dump(
-        (names_scores_matches, previous_pairings), file(self.set_code, 'w'))
+    pickle.dump(
+        (names_scores_matches, previous_pairings), open(self.set_code, 'w'))
 
     return names_scores_matches, previous_pairings
 
@@ -267,16 +265,16 @@ class Pairer(object):
     lcm = 1
     for d in set(score.denominator for score in scores):
       lcm = Lcm(lcm, d)
-    print 'lcm is', lcm
+    print('lcm is', lcm)
 
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
-    names, requested_matches = zip(
-        *[(n, rm) for (n, rm) in zip(names, requested_matches) if 0 < rm <= 3])
+    names, requested_matches = list(zip(*[(
+        n, rm) for (n, rm) in zip(names, requested_matches) if 0 < rm <= 3]))
     names = list(names)
     requested_matches = list(requested_matches)
-    print zip(names, requested_matches)
+    print(list(zip(names, requested_matches)))
 
     previous_pairings = set()
 
@@ -298,9 +296,9 @@ class Pairer(object):
       ]
       byed_i, byed_name = random.choice(candidates)
       requested_matches[byed_i] -= 1
-      print byed_name, 'receives a bye.'
+      print(byed_name, 'receives a bye.')
 
-    names_scores_matches = zip(names, scores, requested_matches)
+    names_scores_matches = list(zip(names, scores, requested_matches))
     random.shuffle(names_scores_matches)
     return names_scores_matches, previous_pairings
 
@@ -308,17 +306,16 @@ class Pairer(object):
     return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
 
   def PrintModel(self, slots, model):
-    for n, row in reversed(slots.items()):
-      for m, playing in reversed(row.items()):
+    for n, row in reversed(list(slots.items())):
+      for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
-          print '{:>6} {:>20} vs. {:<20} {:>6}'.format(
-              '({})'.format(self.scores[m]), player, opponent,
-              '({})'.format(self.scores[n]))
+          print('{:>6} {:>20} vs. {:<20} {:>6}'.format('({})'.format(
+              self.scores[m]), player, opponent, '({})'.format(self.scores[n])))
 
   def ModelPlayers(self, slots, model):
-    for n, row in reversed(slots.items()):
-      for m, playing in reversed(row.items()):
+    for n, row in reversed(list(slots.items())):
+      for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
           yield (self.reverse_players[m], self.reverse_players[n])
