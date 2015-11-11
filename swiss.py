@@ -297,8 +297,8 @@ def Search(seconds=180, enumeration=None):
       if status == z3.sat:
         model = s.model()
         badness = model.evaluate(metric)
-        print 'Badness: {}'.format(tuple(model.evaluate(m)
-                                         for m in all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in
+                                         all_metrics))
         s.push()
         if Timeleft(deadline) > 0:
           print 'Time left:', str(datetime.timedelta(seconds=Timeleft(
@@ -309,9 +309,15 @@ def Search(seconds=180, enumeration=None):
           s.add(metric == badness)
           break
       elif status == z3.unsat:
+        try:
+          model
+        except NameError:
+          print
+          print 'You dun goofed.'
+          return
         print 'OPTIMAL!'
-        print 'Badness: {}'.format(tuple(model.evaluate(m)
-                                         for m in all_metrics))
+        print 'Badness: {}'.format(tuple(model.evaluate(m) for m in
+                                         all_metrics))
         s.pop()
         s.push()
         break
