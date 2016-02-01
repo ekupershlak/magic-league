@@ -10,7 +10,9 @@ import pickle
 import random
 import time
 
+import parallelize
 import z3
+
 import password
 
 BYE = 'BYE'
@@ -118,8 +120,10 @@ def RequestedMatches(slots, requested_matches, reverse_players):
 
   n_players = len(slots) + 1
 
-  for n in range(n_players):
-    print reverse_players[n], 'requests', requested_matches[n], 'matches'
+  order = sorted(
+      range(n_players), key=lambda n: requested_matches[n], reverse=True)
+  for n in parallelize.parallelize(order):
+    print(reverse_players[n], 'requests', requested_matches[n], 'matches')
     n_adjacency = []
     for m in range(n_players):
       if n < m:
