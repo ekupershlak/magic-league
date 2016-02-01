@@ -207,7 +207,7 @@ class Pairer(object):
       if status == z3.sat:
         model = s.model()
         badness = model.evaluate(metric)
-        print('Badness: {}'.format(tuple(model.evaluate(metric))))
+        print('Badness: {}'.format(model.evaluate(metric)))
         s.push()
         if Timeleft(deadline) > 0:
           print('Time left:',
@@ -225,7 +225,7 @@ class Pairer(object):
           print('You dun goofed.')
           return
         print('OPTIMAL!')
-        print('Badness: {}'.format(tuple(model.evaluate(metric))))
+        print('Badness: {}'.format(model.evaluate(metric)))
         s.pop()
         s.push()
         break
@@ -236,7 +236,7 @@ class Pairer(object):
         s.add(metric <= badness)
         break
 
-    self._PrintModel(slots, self.scores, model)
+    self.PrintModel(slots, model)
     print()
     print('Badness:', model.evaluate(metric))
     return list(self.ModelPlayers(slots, model))
