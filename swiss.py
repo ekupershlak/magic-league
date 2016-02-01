@@ -84,6 +84,8 @@ def ExactlyOne(vs):
 def PopCount(vs, n):
   if n == 0:
     return z3.Not(z3.Or(vs))
+  if n in (1, 2, 3):
+    return EnumeratedPopCount(vs, n)
   else:
     terms = [z3.Or(vs)]
     for i, v in enumerate(vs):
@@ -130,8 +132,7 @@ def RequestedMatches(slots, requested_matches, reverse_players):
         n_adjacency.append(slots[n][m])
       elif n > m:
         n_adjacency.append(slots[m][n])
-    # yield PopCount(n_adjacency, requested_matches[n])
-    yield EnumeratedPopCount(n_adjacency, requested_matches[n])
+    yield PopCount(n_adjacency, requested_matches[n])
 
 
 def NoRepeatMatches(s, slots, previous_pairings, reverse_players):
