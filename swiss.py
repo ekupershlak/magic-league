@@ -328,7 +328,7 @@ class Pairer(object):
           opponent = self.reverse_players[n]
           print('{:>6} {:>20} vs. {:<20} {:>6}'.format(
               '({})'.format(self.scores[m]), player, opponent,
-              '({})'.format(self.scores[n])))
+              '({})'.format(self.scores[n])))  # pyformat: disable
 
   def ModelPlayers(self, slots, model):
     for n, row in reversed(list(slots.items())):
