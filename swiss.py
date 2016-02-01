@@ -102,6 +102,8 @@ def EnumeratedPopCount(vs, n):
     return z3.Not(z3.Or(vs))
   else:
     options = []
+    # z3 objects override equality, so they misbehave in containers. Enumerate
+    # them to get well-behaved surrogates.
     for combo in itertools.combinations(enumerate(vs), n):
       options.append(z3.And([v if (i, v) in combo else z3.Not(v)
                              for (i, v) in enumerate(vs)]))
