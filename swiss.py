@@ -137,11 +137,11 @@ def RequestedMatches(slots, requested_matches, reverse_players):
     yield PopCount(n_adjacency, requested_matches[n])
 
 
-def NoRepeatMatches(s, slots, previous_pairings, reverse_players):
+def NoRepeatMatches(slots, previous_pairings, reverse_players):
   for n, row in list(slots.items()):
     for m, _ in list(row.items()):
       if (reverse_players[n], reverse_players[m]) in previous_pairings:
-        s.add(z3.Not(slots[n][m]))
+        yield z3.Not(slots[n][m])
 
 
 def MismatchSum(slots, scores):
@@ -193,7 +193,9 @@ class Pairer(object):
     s = NamedStack()
     s.push()
     slots = MakeSlots(len(self.players))
-    NoRepeatMatches(s, slots, self.previous_pairings, self.reverse_players)
+    for term in NoRepeatMatches(slots, self.previous_pairings,
+                                self.reverse_players):
+      s.add(term)
     deadline = time.time() + seconds
     _, metric = MismatchSum(slots, self.scores)
 
