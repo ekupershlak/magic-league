@@ -244,7 +244,7 @@ class Pairer(object):
 
     self.PrintModel(slots, model)
     print()
-    print('Badness:', model.evaluate(metric))
+    print('Badness: {}'.format(model.evaluate(metric)))
     return list(self.ModelPlayers(slots, model))
 
   def Writeback(self, pairings):
