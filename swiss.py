@@ -182,10 +182,14 @@ class Pairer(object):
         for (id, (_, _, m)) in zip(itertools.count(), names_scores_matches)
     }
 
-    self.reverse_players = {number: name
-                            for name, number in list(self.players.items())}
-    self.player_scores = {self.reverse_players[id]: score
-                          for (id, score) in list(self.scores.items())}
+  @property
+  def reverse_players(self):
+    return {number: name for name, number in list(self.players.items())}
+
+  @property
+  def player_scores(self):
+    return {self.reverse_players[id]: score
+            for (id, score) in list(self.scores.items())}
 
   def Search(self, seconds=3600):
     """Constructs an SMT problem for pairings and solves it."""
