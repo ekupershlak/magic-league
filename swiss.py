@@ -146,7 +146,6 @@ def NoRepeatMatches(slots, previous_pairings, reverse_players):
 
 def MismatchSum(slots, scores):
   """Terms for sum of mismatch and squared mismatch."""
-  terms = []
   sq_terms = []
   for n, row in list(slots.items()):
     for m, slot in list(row.items()):
@@ -154,10 +153,9 @@ def MismatchSum(slots, scores):
         diff = (scores[m] - scores[n])**2
         diff = round(diff, 2)
         diff = fractions.Fraction(diff).limit_denominator(1000)
-        terms.append(z3.If(slot, 1, 0))
         sq_terms.append(z3.If(slot, diff.numerator * 1000 / diff.denominator,
                               0))
-  return z3.Sum(terms), z3.Sum(sq_terms)
+  return z3.Sum(sq_terms)
 
 
 class Pairer(object):
@@ -201,7 +199,7 @@ class Pairer(object):
                                 self.reverse_players):
       s.add(term)
     deadline = time.time() + seconds
-    _, metric = MismatchSum(slots, self.scores)
+    metric = MismatchSum(slots, self.scores)
 
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
