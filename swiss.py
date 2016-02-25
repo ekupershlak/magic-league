@@ -6,11 +6,12 @@ import collections
 import datetime
 import fractions
 import itertools
+import multiprocessing
 import pickle
 import random
+import threading
 import time
 
-import parallelize
 import password
 import z3
 
@@ -125,7 +126,8 @@ def RequestedMatches(slots, requested_matches, reverse_players):
 
   order = sorted(
       range(n_players), key=lambda n: requested_matches[n], reverse=True)
-  for n in parallelize.parallelize(order):
+
+  def RequestedMatchesForOnePlayer(n, out_results):
     print(reverse_players[n], 'requests', requested_matches[n], 'matches')
     n_adjacency = []
     for m in range(n_players):
@@ -133,7 +135,19 @@ def RequestedMatches(slots, requested_matches, reverse_players):
         n_adjacency.append(slots[n][m])
       elif n > m:
         n_adjacency.append(slots[m][n])
-    yield PopCount(n_adjacency, requested_matches[n])
+    out_results.append(PopCount(n_adjacency, requested_matches[n]))
+
+  cpu_count = multiprocessing.cpu_count()
+  results = []
+
+  for cpu in range(cpu_count):
+    for n in itertools.islice(order, cpu, None, cpu_count):
+      p = threading.Thread(target=RequestedMatchesForOnePlayer,
+                           args=(n, results))
+      p.start()
+      p.join()
+  for r in results:
+    yield r
 
 
 def NoRepeatMatches(slots, previous_pairings, reverse_players):
