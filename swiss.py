@@ -11,9 +11,8 @@ import random
 import time
 
 import parallelize
-import z3
-
 import password
+import z3
 
 BYE = 'BYE'
 
