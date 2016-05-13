@@ -204,35 +204,30 @@ class Pairer(object):
 
   def Search(self, seconds=3600):
     """Constructs an SMT problem for pairings and solves it."""
-    s = z3.Solver()
+    deadline = time.time() + seconds
     s = NamedStack()
     s.push()
+
     slots = MakeSlots(len(self.players))
     for term in NoRepeatMatches(slots, self.previous_pairings,
                                 self.reverse_players):
       s.add(term)
-    deadline = time.time() + seconds
     metric = MismatchSum(slots, self.scores)
-
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
       s.add(term)
 
+    minimum = 0
     while True:
       s.set('soft_timeout', Timeleft(deadline) * 1000)
-      status = s.check()
+      if Timeleft(deadline) > 0:
+        print('Time left:', str(datetime.timedelta(seconds=Timeleft(deadline))))
+        status = s.check()
       if status == z3.sat:
         model = s.model()
-        badness = model.evaluate(metric)
-        print('Badness: {}'.format(model.evaluate(metric)))
-        s.push()
-        if Timeleft(deadline) > 0:
-          print('Time left:',
-                str(datetime.timedelta(seconds=Timeleft(deadline))))
-          s.add(metric < badness)
-        else:
-          print('Time limit reached.')
-          s.add(metric == badness)
+        badness = int(str(model.evaluate(metric)))
+        if badness == minimum:
+          print('OPTIMAL!')
           break
       elif status == z3.unsat:
         try:
@@ -241,17 +236,19 @@ class Pairer(object):
           print()
           print('You dun goofed.')
           return
-        print('OPTIMAL!')
-        print('Badness: {}'.format(model.evaluate(metric)))
         s.pop()
         s.push()
-        break
+        minimum = (badness + minimum) // 2
+        s.add(metric > minimum)
       else:
         print('Time limit reached.')
         s.pop()
         s.push()
         s.add(metric <= badness)
         break
+      print('Badness: {}\tMinimum: {}'.format(badness, minimum))
+      s.push()
+      s.add(metric < (badness + minimum) // 2)
 
     self.PrintModel(slots, model)
     print()
@@ -323,8 +320,8 @@ class Pairer(object):
       candidates = [
           (i, name)
           for i, (name, n_requested) in enumerate(zip(names, requested_matches))
-          if n_requested == targetted_for_bye and (name, BYE
-                                                  ) not in previous_pairings
+          if n_requested == targetted_for_bye and (name, BYE) not in
+          previous_pairings
       ]
       byed_i, byed_name = random.choice(candidates)
       requested_matches[byed_i] -= 1
