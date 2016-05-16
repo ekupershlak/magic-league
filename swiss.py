@@ -239,7 +239,7 @@ class Pairer(object):
         s.pop()
         s.push()
         minimum = (badness + minimum) // 2
-        s.add(metric > minimum)
+        s.add(metric >= minimum)
       else:
         print('Time limit reached.')
         s.pop()
