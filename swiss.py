@@ -165,9 +165,8 @@ def MismatchSum(slots, scores):
       if n < m:
         diff = (scores[m] - scores[n])**2
         diff = round(diff, 2)
-        diff = fractions.Fraction(diff).limit_denominator(1000)
-        sq_terms.append(z3.If(slot, diff.numerator * 1000 / diff.denominator,
-                              0))
+        diff = fractions.Fraction(diff).limit_denominator(500)
+        sq_terms.append(z3.If(slot, diff.numerator * 500 / diff.denominator, 0))
   return z3.Sum(sq_terms)
 
 
