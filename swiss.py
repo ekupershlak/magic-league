@@ -9,6 +9,7 @@ import itertools
 import multiprocessing
 import pickle
 import random
+import sys
 import threading
 import time
 
@@ -351,3 +352,14 @@ class Pairer(object):
       for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
           yield (self.reverse_players[m], self.reverse_players[n])
+
+if __name__ == '__main__':
+  if len(sys.argv) != 3:
+    print('Usage: {} <set code> <cycle>'.format(sys.argv[0]), file=sys.stderr)
+    sys.exit(2)
+  set_code, cycle = sys.argv[1:2]
+  p = Pairer(set_code, int(cycle))
+  pairings = p.Search(seconds=4000, random_pairings=cycle in (1, 2))
+  print(pairings)
+  password = reload(password)
+  p.Writeback(pairings)
