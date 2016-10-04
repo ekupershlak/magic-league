@@ -240,18 +240,20 @@ class Pairer(object):
           print('You dun goofed.')
           return
         s.pop()
+        # The constraint labeled putative failed when it was added on a previous
+        # run, so the minimum (inclusive) is that + 1.
+        minimum = (badness + minimum) // 2 + 1
+        s.add(metric >= minimum)  # Definite: never getting rolled back.
         s.push()
-        minimum = (badness + minimum) // 2
-        s.add(metric >= minimum)
       else:
         print('Time limit reached.')
         s.pop()
         s.push()
-        s.add(metric <= badness)
+        s.add(metric <= badness)  # Final: the best result to explore.
         break
       print('Badness: {}\tMinimum: {}'.format(badness, minimum))
       s.push()
-      s.add(metric < (badness + minimum) // 2)
+      s.add(metric <= (badness + minimum) // 2)  # Putative
 
     self.PrintModel(slots, model)
     print()
