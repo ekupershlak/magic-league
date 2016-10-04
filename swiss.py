@@ -202,7 +202,7 @@ class Pairer(object):
     return {self.reverse_players[id]: score
             for (id, score) in list(self.scores.items())}
 
-  def Search(self, seconds=3600, random=False):
+  def Search(self, seconds=3600, random_pairings=False):
     """Constructs an SMT problem for pairings and solves it."""
     deadline = time.time() + seconds
     s = NamedStack()
@@ -212,7 +212,7 @@ class Pairer(object):
     for term in NoRepeatMatches(slots, self.previous_pairings,
                                 self.reverse_players):
       s.add(term)
-    if random:
+    if random_pairings:
       metric = z3.IntVal(0)
     else:
       metric = MismatchSum(slots, self.scores)
