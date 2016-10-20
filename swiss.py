@@ -313,9 +313,9 @@ class Pairer(object):
     previous_pairings = set()
 
     for i in range(1, self.cycle):
-      cycle = spreadsheet.worksheet('Cycle {}'.format(i))
-      a = cycle.col_values(2)[1:]
-      b = cycle.col_values(3)[1:]
+      cycle_sheet = spreadsheet.worksheet('Cycle {}'.format(i))
+      a = cycle_sheet.col_values(2)[1:]
+      b = cycle_sheet.col_values(3)[1:]
 
       previous_pairings |= set(zip(a, b))
       previous_pairings |= set(zip(b, a))
@@ -355,13 +355,18 @@ class Pairer(object):
         if str(model.evaluate(playing)) == 'True':
           yield (self.reverse_players[m], self.reverse_players[n])
 
-if __name__ == '__main__':
+
+def Main():
   if len(sys.argv) != 3:
     print('Usage: {} <set code> <cycle>'.format(sys.argv[0]), file=sys.stderr)
     sys.exit(2)
   set_code, cycle = sys.argv[1:3]
-  p = Pairer(set_code, int(cycle))
-  pairings = p.Search(seconds=4000, random_pairings=cycle in (1,))
+  pairer = Pairer(set_code, int(cycle))
+  pairings = pairer.Search(seconds=4000, random_pairings=cycle in (1,))
   print(pairings)
-  password = reload(password)
-  p.Writeback(pairings)
+  password = reload(password)  # pylint: disable=redefined-outer-name
+  pairer.Writeback(pairings)
+
+
+if __name__ == '__main__':
+  Main()
