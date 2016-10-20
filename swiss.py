@@ -10,7 +10,6 @@ import multiprocessing
 import pickle
 import random
 import sys
-import threading
 import time
 
 import password
@@ -111,6 +110,13 @@ def EnumeratedPopCount(vs, n):
     return z3.Or(options)
 
 
+def ToSMTLIB2(f, status='unknown', name='benchmark', logic=''):
+  """Convert the formula f to a SMT-LIB 2.0 string."""
+  v = (z3.Ast * 0)()
+  return z3.Z3_benchmark_to_smtlib_string(f.ctx_ref(), name, logic, status, '',
+                                          0, v, f.as_ast())
+
+
 def RequestedMatches(slots, requested_matches, reverse_players):
   """Guarantees players get their requested number of matches.
 
@@ -128,27 +134,24 @@ def RequestedMatches(slots, requested_matches, reverse_players):
   order = sorted(
       range(n_players), key=lambda n: requested_matches[n], reverse=True)
 
-  def RequestedMatchesForOnePlayer(n, out_results):
-    print(reverse_players[n], 'requests', requested_matches[n], 'matches')
-    n_adjacency = []
-    for m in range(n_players):
-      if n < m:
-        n_adjacency.append(slots[n][m])
-      elif n > m:
-        n_adjacency.append(slots[m][n])
-    out_results.append(PopCount(n_adjacency, requested_matches[n]))
+  pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-  cpu_count = multiprocessing.cpu_count()
-  results = []
+  args = [(n, reverse_players[n], requested_matches[n], n_players)
+          for n in order]
+  for result in pool.map(RequestedMatchesForOnePlayer, args):
+    yield z3.parse_smt2_string(result)
 
-  for cpu in range(cpu_count):
-    for n in itertools.islice(order, cpu, None, cpu_count):
-      p = threading.Thread(target=RequestedMatchesForOnePlayer,
-                           args=(n, results))
-      p.start()
-      p.join()
-  for r in results:
-    yield r
+
+def RequestedMatchesForOnePlayer((n, name, requested, n_players)):
+  print(name, 'requests', requested, 'matches')
+  slots = MakeSlots(n_players)
+  n_adjacency = []
+  for m in range(n_players):
+    if n < m:
+      n_adjacency.append(slots[n][m])
+    elif n > m:
+      n_adjacency.append(slots[m][n])
+  return ToSMTLIB2(PopCount(n_adjacency, requested))
 
 
 def NoRepeatMatches(slots, previous_pairings, reverse_players):
