@@ -359,7 +359,7 @@ if __name__ == '__main__':
   if len(sys.argv) != 3:
     print('Usage: {} <set code> <cycle>'.format(sys.argv[0]), file=sys.stderr)
     sys.exit(2)
-  set_code, cycle = sys.argv[1:2]
+  set_code, cycle = sys.argv[1:3]
   p = Pairer(set_code, int(cycle))
   pairings = p.Search(seconds=4000, random_pairings=cycle in (1, 2))
   print(pairings)
