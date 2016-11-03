@@ -360,6 +360,7 @@ class Pairer(object):
 
 
 def Main():
+  """Fetch records from the spreadsheet, generate pairings, write them back."""
   if len(sys.argv) != 3:
     print('Usage: {} <set code> <cycle>'.format(sys.argv[0]), file=sys.stderr)
     sys.exit(2)
