@@ -367,6 +367,7 @@ def Main():
   pairer = Pairer(set_code, int(cycle))
   pairings = pairer.Search(seconds=4000, random_pairings=cycle in (1,))
   print(pairings)
+  global password
   password = reload(password)  # pylint: disable=redefined-outer-name
   pairer.Writeback(pairings)
 
