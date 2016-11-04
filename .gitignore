@@ -18,6 +18,12 @@ lib64/
 parts/
 sdist/
 var/
+site-packages/
+lib-python/
+lib_pypy/
+bin/
+help/
+share/
 *.egg-info/
 .installed.cfg
 *.egg
