@@ -22,6 +22,7 @@ site-packages/
 lib-python/
 lib_pypy/
 bin/
+include/
 help/
 share/
 *.egg-info/
