@@ -277,14 +277,14 @@ class Pairer(object):
   def _Fetch(self, from_cache=True):
     """Fetches data from local file, falling back to the spreadsheet."""
 
+    filename = '{s.set_code}-{s.cycle}'.format(s=self)
     if from_cache:
       try:
-        return pickle.load(open(self.set_code))
+        return pickle.load(open(filename))
       except IOError:
         pass
     names_scores_matches, previous_pairings = self._FetchFromSheet()
-    pickle.dump(
-        (names_scores_matches, previous_pairings), open(self.set_code, 'w'))
+    pickle.dump((names_scores_matches, previous_pairings), open(filename, 'w'))
 
     return names_scores_matches, previous_pairings
 
