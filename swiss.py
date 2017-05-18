@@ -307,11 +307,12 @@ class Pairer(object):
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
-    names, requested_matches = list(zip(*[(
-        n, rm) for (n, rm) in zip(names, requested_matches) if 0 < rm <= 3]))
+    names, requested_matches, scores = list(
+        zip(*[(n, rm, s) for (n, rm, s) in zip(names, requested_matches, scores)
+              if 0 < rm <= 3]))
     names = list(names)
     requested_matches = list(requested_matches)
-    print(list(zip(names, requested_matches)))
+    print(list(zip(names, requested_matches, scores)))
 
     previous_pairings = set()
 
