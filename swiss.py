@@ -225,7 +225,7 @@ class Pairer(object):
 
     minimum = 0
     while True:
-      s.set('soft_timeout', Timeleft(deadline) * 1000)
+      s.set('timeout', Timeleft(deadline) * 1000)
       if Timeleft(deadline) > 0:
         print('Time left:', str(datetime.timedelta(seconds=Timeleft(deadline))))
         status = s.check()

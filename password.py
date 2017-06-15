@@ -1,13 +1,10 @@
 """OAuth2 authentication for magic-ny league parings."""
 
-import json
-
 import gspread
-from oauth2client.client import SignedJwtAssertionCredentials
+from oauth2client.service_account import ServiceAccountCredentials
 
-json_key = json.load(open('credentials.json'))
 scope = ['https://spreadsheets.google.com/feeds']
 
-credentials = SignedJwtAssertionCredentials(json_key['client_email'],
-                                            json_key['private_key'], scope)
+credentials = ServiceAccountCredentials.from_json_keyfile_name(
+    'credentials.json', scope)
 gc = gspread.authorize(credentials)
