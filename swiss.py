@@ -163,16 +163,20 @@ def NoRepeatMatches(slots, previous_pairings, reverse_players):
         yield z3.Not(slots[n][m])
 
 
-def MismatchSum(slots, scores):
+def MismatchSum(slots, scores, lcm):
   """Terms for sum of mismatch and squared mismatch."""
   sq_terms = []
   for n, row in list(slots.items()):
     for m, slot in list(row.items()):
       if n < m:
         diff = (scores[m] - scores[n])**2
-        diff = round(diff, 2)
-        diff = fractions.Fraction(diff).limit_denominator(500)
-        sq_terms.append(z3.If(slot, diff.numerator * 500 / diff.denominator, 0))
+        # This may be necessary if the formula can't be solved at full
+        # precision. Remove this if you get through a whole league without
+        # needing it.
+        # diff = round(diff, 3)
+        # diff = fractions.Fraction(diff).limit_denominator(500)
+        sq_terms.append(
+            z3.If(slot, diff.numerator * lcm // diff.denominator, 0))
   return z3.Sum(sq_terms)
 
 
@@ -220,10 +224,11 @@ class Pairer(object):
     if random_pairings:
       metric = z3.IntVal(0)
     else:
-      metric = MismatchSum(slots, self.scores)
+      metric = MismatchSum(slots, self.scores, self.lcm)
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
       s.add(term)
+    print('lcm is', self.lcm)
 
     minimum = 0
     while True:
@@ -233,8 +238,8 @@ class Pairer(object):
         status = s.check()
       if status == z3.sat:
         model = s.model()
-        badness = int(str(model.evaluate(metric)))
-        if badness == minimum:
+        loss = int(str(model.evaluate(metric)))
+        if loss == minimum:
           print('OPTIMAL!')
           break
       elif status == z3.unsat:
@@ -242,31 +247,34 @@ class Pairer(object):
           model
         except NameError:
           print()
-          print('You dun goofed (Formula is unsatisfiable at any badness).')
+          print('You dun goofed (Formula is unsatisfiable at any loss).')
           return
         s.pop()
         # The constraint labeled putative failed when it was added on a previous
         # run, so the minimum (inclusive) is that + 1.
-        minimum = (badness + minimum) // 2 + 1
+        minimum = (loss + minimum) // 2 + 1
         s.add(metric >= minimum)  # Definite: never getting rolled back.
         s.push()
       else:
         print('Time limit reached.')
         s.pop()
         s.push()
-        s.add(metric <= badness)  # Final: the best result to explore.
+        s.add(metric <= loss)  # Final: the best result to explore.
         break
-      print('Badness: {}\tMinimum: {}'.format(badness, minimum))
+      print('Loss: {:.4f}\tMinimum: {:.4f}'.format(
+          self._RMSE(loss), self._RMSE(minimum)))
       s.push()
-      s.add(metric <= (badness + minimum) // 2)  # Putative
+      s.add(metric <= (loss + minimum) // 2)  # Putative
 
     self.PrintModel(slots, model)
     print()
-    final_badness = int(str(model.evaluate(metric)))
-    rmse = math.sqrt(fractions.Fraction(final_badness, self.lcm))
-    print('Badness over LCM²: {} / {}'.format(final_badness, self.lcm**2))
-    print('Root Mean Squared Error: {:.2f}'.format(rmse))
+    final_loss = int(str(model.evaluate(metric)))
+    print('Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2))
+    print('Root Mean Squared Error: {:.4f}'.format(self._RMSE(final_loss)))
     return list(self.ModelPlayers(slots, model))
+
+  def _RMSE(self, loss):
+    return math.sqrt(fractions.Fraction(loss, self.lcm**2))
 
   def Writeback(self, pairings):
     spreadsheet = self.GetSpreadsheet()
@@ -289,7 +297,8 @@ class Pairer(object):
       except IOError:
         pass
     names_scores_matches, previous_pairings, lcm = self._FetchFromSheet()
-    pickle.dump((names_scores_matches, previous_pairings), open(filename, 'w'))
+    pickle.dump((names_scores_matches, previous_pairings, lcm),
+                open(filename, 'w'))
 
     return names_scores_matches, previous_pairings, lcm
 
@@ -307,7 +316,6 @@ class Pairer(object):
     lcm = 1
     for d in set(score.denominator for score in scores):
       lcm = Lcm(lcm, d)
-    print('lcm is', lcm)
 
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
@@ -354,7 +362,7 @@ class Pairer(object):
         if str(model.evaluate(playing)) == 'True':
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
-          print('{:>6} {:>20} vs. {:<20} {:>6}'.format(
+          print('{:>7} {:>20} vs. {:<20} {:>7}'.format(
               '({})'.format(self.scores[m]), player, opponent,
               '({})'.format(self.scores[n])))  # pyformat: disable
 
