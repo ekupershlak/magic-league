@@ -242,7 +242,7 @@ class Pairer(object):
           model
         except NameError:
           print()
-          print('You dun goofed.')
+          print('You dun goofed (Formula is unsatisfiable at any badness).')
           return
         s.pop()
         # The constraint labeled putative failed when it was added on a previous
