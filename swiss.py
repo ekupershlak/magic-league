@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 """Solver for swiss pairings."""
 
 from __future__ import print_function
@@ -6,6 +7,7 @@ import collections
 import datetime
 import fractions
 import itertools
+import math
 import multiprocessing
 import pickle
 import random
@@ -181,7 +183,7 @@ class Pairer(object):
     self.set_code = set_code
     self.cycle = cycle
 
-    names_scores_matches, self.previous_pairings = self._Fetch()
+    names_scores_matches, self.previous_pairings, self.lcm = self._Fetch()
     self.players = {
         name: id
         for (id, (name, _, _)) in zip(itertools.count(), names_scores_matches)
@@ -260,7 +262,10 @@ class Pairer(object):
 
     self.PrintModel(slots, model)
     print()
-    print('Badness: {}'.format(model.evaluate(metric)))
+    final_badness = int(str(model.evaluate(metric)))
+    rmse = math.sqrt(fractions.Fraction(final_badness, self.lcm))
+    print('Badness over LCM²: {} / {}'.format(final_badness, self.lcm**2))
+    print('Root Mean Squared Error: {:.2f}'.format(rmse))
     return list(self.ModelPlayers(slots, model))
 
   def Writeback(self, pairings):
@@ -283,10 +288,10 @@ class Pairer(object):
         return pickle.load(open(filename))
       except IOError:
         pass
-    names_scores_matches, previous_pairings = self._FetchFromSheet()
+    names_scores_matches, previous_pairings, lcm = self._FetchFromSheet()
     pickle.dump((names_scores_matches, previous_pairings), open(filename, 'w'))
 
-    return names_scores_matches, previous_pairings
+    return names_scores_matches, previous_pairings, lcm
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
@@ -338,7 +343,7 @@ class Pairer(object):
 
     names_scores_matches = list(zip(names, scores, requested_matches))
     random.shuffle(names_scores_matches)
-    return names_scores_matches, previous_pairings
+    return names_scores_matches, previous_pairings, lcm
 
   def GetSpreadsheet(self):
     return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
