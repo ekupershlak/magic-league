@@ -187,7 +187,8 @@ class Pairer(object):
     self.set_code = set_code
     self.cycle = cycle
 
-    names_scores_matches, self.previous_pairings, self.lcm = self._Fetch()
+    (names_scores_matches, self.previous_pairings, self.lcm,
+     self.byed_name) = self._Fetch()
     self.players = {
         name: id
         for (id, (name, _, _)) in zip(itertools.count(), names_scores_matches)
@@ -271,7 +272,10 @@ class Pairer(object):
     final_loss = int(str(model.evaluate(metric)))
     print('Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2))
     print('Root Mean Squared Error: {:.4f}'.format(self._RMSE(final_loss)))
-    return list(self.ModelPlayers(slots, model))
+
+    pairings = list(self.ModelPlayers(slots, model))
+    if self.byed_name:
+      pairings.append((self.byed_name, BYE))
 
   def _RMSE(self, loss):
     return math.sqrt(fractions.Fraction(loss, self.lcm**2))
@@ -296,11 +300,12 @@ class Pairer(object):
         return pickle.load(open(filename))
       except IOError:
         pass
-    names_scores_matches, previous_pairings, lcm = self._FetchFromSheet()
+    (names_scores_matches, previous_pairings, lcm,
+     byed_name) = self._FetchFromSheet()
     pickle.dump((names_scores_matches, previous_pairings, lcm),
                 open(filename, 'w'))
 
-    return names_scores_matches, previous_pairings, lcm
+    return names_scores_matches, previous_pairings, lcm, byed_name
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
@@ -348,10 +353,12 @@ class Pairer(object):
       byed_i, byed_name = random.choice(candidates)
       requested_matches[byed_i] -= 1
       print(byed_name, 'receives a bye.')
+    else:
+      byed_name = None
 
     names_scores_matches = list(zip(names, scores, requested_matches))
     random.shuffle(names_scores_matches)
-    return names_scores_matches, previous_pairings, lcm
+    return names_scores_matches, previous_pairings, lcm, byed_name
 
   def GetSpreadsheet(self):
     return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
