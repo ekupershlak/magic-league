@@ -304,7 +304,7 @@ class Pairer(object):
         pass
     (names_scores_matches, previous_pairings, lcm,
      byed_name) = self._FetchFromSheet()
-    pickle.dump((names_scores_matches, previous_pairings, lcm),
+    pickle.dump((names_scores_matches, previous_pairings, lcm, byed_name),
                 open(filename, 'w'))
 
     return names_scores_matches, previous_pairings, lcm, byed_name
