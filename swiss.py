@@ -269,15 +269,15 @@ class Pairer(object):
       s.push()
       s.add(metric <= (loss + minimum) // 2)  # Putative
 
-    self.PrintModel(slots, model)
-    print()
     final_loss = int(str(model.evaluate(metric)))
-    print('Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2))
-    print('Root Mean Squared Error: {:.4f}'.format(self._RMSE(final_loss)))
+    self.PrintModel(slots, model, final_loss)
+    with file('{s.set_code}{s.cycle}-pairings.txt', 'w') as output:
+      self.PrintModel(slots, model, final_loss, stream=output)
 
     pairings = list(self.ModelPlayers(slots, model))
     if self.byed_name:
       pairings.append((self.byed_name, BYE))
+    return pairings
 
   def _RMSE(self, loss):
     return math.sqrt(fractions.Fraction(loss, self.lcm**2))
@@ -365,15 +365,24 @@ class Pairer(object):
   def GetSpreadsheet(self):
     return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
 
-  def PrintModel(self, slots, model):
+  def PrintModel(self, slots, model, final_loss, stream=sys.stdout):
+    """Print a pretty table of the model to the given stream."""
     for n, row in reversed(list(slots.items())):
       for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
-          print('{:>7} {:>20} vs. {:<20} {:>7}'.format(
-              '({})'.format(self.scores[m]), player, opponent,
-              '({})'.format(self.scores[n])))  # pyformat: disable
+          print(
+              '{:>7} {:>20} vs. {:<20} {:>7}'.format(
+                  '({})'.format(self.scores[m]), player, opponent,
+                  '({})'.format(self.scores[n])),
+              file=stream)
+    print(file=stream)
+    print(
+        'Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2), file=stream)
+    print(
+        'Root Mean Squared Error: {:.4f}'.format(self._RMSE(final_loss)),
+        file=stream)
 
   def ModelPlayers(self, slots, model):
     for n, row in reversed(list(slots.items())):
