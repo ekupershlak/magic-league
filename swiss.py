@@ -144,7 +144,9 @@ def RequestedMatches(slots, requested_matches, reverse_players):
     yield z3.parse_smt2_string(result)
 
 
-def RequestedMatchesForOnePlayer((n, name, requested, n_players)):
+def RequestedMatchesForOnePlayer(args):
+  """Terms for asserting players play their requested number of matches."""
+  n, name, requested, n_players = args
   print(name, 'requests', requested, 'matches')
   slots = MakeSlots(n_players)
   n_adjacency = []
