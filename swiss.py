@@ -237,7 +237,8 @@ class Pairer(object):
     while True:
       s.set('timeout', Timeleft(deadline) * 1000)
       if Timeleft(deadline) > 0:
-        print('Time left:', str(datetime.timedelta(seconds=Timeleft(deadline))))
+        print(
+            'Time budget:', str(datetime.timedelta(seconds=Timeleft(deadline))))
         status = s.check()
       if status == z3.sat:
         model = s.model()
@@ -264,14 +265,14 @@ class Pairer(object):
         s.push()
         s.add(metric <= loss)  # Final: the best result to explore.
         break
-      print('Loss: {:.4f}\tMinimum: {:.4f}'.format(
-          self._RMSE(loss), self._RMSE(minimum)))
+      print('Loss: {:d}\tMinimum: {:d}'.format(loss, minimum))
       s.push()
       s.add(metric <= (loss + minimum) // 2)  # Putative
 
     final_loss = int(str(model.evaluate(metric)))
     self.PrintModel(slots, model, final_loss)
-    with file('{s.set_code}{s.cycle}-pairings.txt', 'w') as output:
+    with file(
+        'pairings-{s.set_code}{s.cycle}.txt'.format(s=self), 'w') as output:
       self.PrintModel(slots, model, final_loss, stream=output)
 
     pairings = list(self.ModelPlayers(slots, model))
