@@ -245,9 +245,16 @@ class Pairer(object):
                                 self.reverse_players):
       s.add(term)
     if random_pairings:
-      metric = z3.IntVal(0)
-    else:
-      metric = MismatchSum(slots, self.scores, self.lcm)
+      degree_sequence = [d for (_, d) in sorted(self.requested_matches.items())]
+      edge_set = ImportanceSampledBlitzsteinDiaconis(degree_sequence)
+      pairings = []
+      if self.byed_name:
+        pairings.append((self.byed_name, BYE))
+      for (i, j) in edge_set:
+        pairings.append((self.reverse_players[i], self.reverse_players[j]))
+      print('Random pairings')
+      return pairings
+    metric = MismatchSum(slots, self.scores, self.lcm)
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
       s.add(term)
@@ -426,6 +433,67 @@ def Main():
     global password
     password = importlib.reload(password)  # pylint: disable=redefined-outer-name
     pairer.Writeback(pairings)
+
+
+def Graphical(d):
+  n = len(d)
+  if any(di < 0 for di in d):
+    return False
+  d = [di for di in d if di > 0]
+  d.sort(reverse=True)
+  for k in range(1, n + 1):
+    if sum(d[:k]) > k * (k - 1) + sum(min(k, di) for di in d[k:]):
+      return False
+  return True
+
+
+def ArrayDecrement(indices, array):
+  a = array[:]
+  for i in indices:
+    a[i] -= 1
+  return a
+
+
+def ImportanceSampledBlitzsteinDiaconis(d, n=100):
+  """Sample from `n` graphs according to their probability of generation."""
+  population = []
+  weights = []
+  for _ in range(n):
+    e, c_sigma = BlitzsteinDiaconis(d)
+    population.append(e)
+    weights.append(1 / c_sigma)
+  return random.choices(population, weights, k=1)[0]
+
+
+def BlitzsteinDiaconis(d):
+  """Generates a random graph with degree sequence `d`."""
+  d = d[:]
+  equivalence_class_size = 1
+  likelihood = fractions.Fraction(1)
+  e = set()
+  if not Graphical(d):
+    raise ValueError('{} is not graphical.'.format(d))
+  while any(di > 0 for di in d):
+    minimum = min(di for di in d if di > 0)
+    i = d.index(minimum)
+    equivalence_class_size *= minimum
+    while d[i] > 0:
+      candidates = {
+          j
+          for j in range(len(d))
+          if j != i and tuple(sorted((i, j))) not in e and
+          Graphical(ArrayDecrement((i, j), d))
+      }
+      selection = random.choices(
+          list(candidates), [d[j] for j in candidates], k=1)[0]
+      likelihood *= d[selection]
+      likelihood /= sum(d[j] for j in candidates)
+      e.add(tuple(sorted((i, selection))))
+      d = ArrayDecrement((i, selection), d)
+      assert Graphical(d)
+  # print('c(Y) = {}'.format(equivalence_class_size))
+  # print('σ(Y) = {}'.format(likelihood))
+  return e, likelihood * equivalence_class_size
 
 
 if __name__ == '__main__':
