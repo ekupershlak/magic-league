@@ -319,7 +319,7 @@ class Pairer(object):
     filename = '{s.set_code}-{s.cycle}'.format(s=self)
     if from_cache:
       try:
-        return pickle.load(open(filename))
+        return pickle.load(open(filename, 'rb'))
       except IOError:
         pass
     (names_scores_matches, previous_pairings, lcm,
