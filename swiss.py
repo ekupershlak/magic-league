@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 
+import argparse
 import collections
 import datetime
 import fractions
@@ -19,6 +20,23 @@ import password
 import z3
 
 BYE = 'BYE'
+
+flags = argparse.ArgumentParser(description='Calculate multi-swiss pairings.')
+flags.add_argument(
+    'set_code',
+    metavar='XYZ',
+    type=str,
+    help='the set code for the pairings spreadsheet',)
+flags.add_argument(
+    'cycle',
+    metavar='N',
+    type=int,
+    help='the cycle to pair',)
+flags.add_argument(
+    '--write_pairings',
+    action='store_true',
+    help='whether to write the pairings to the spreadsheet',)
+FLAGS = None
 
 
 class NamedStack(z3.Solver):
@@ -395,12 +413,10 @@ class Pairer(object):
 
 def Main():
   """Fetch records from the spreadsheet, generate pairings, write them back."""
-  if len(sys.argv) != 3:
-    print('Usage: {} <set code> <cycle>'.format(sys.argv[0]), file=sys.stderr)
-    sys.exit(2)
-  set_code, cycle = sys.argv[1:3]
-  pairer = Pairer(set_code, int(cycle))
-  pairings = pairer.Search(seconds=4000, random_pairings=cycle in (1,))
+  global FLAGS
+  FLAGS = flags.parse_args(sys.argv[1:])
+  pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
+  pairings = pairer.Search(seconds=4000, random_pairings=FLAGS.cycle in (1,))
   print(pairings)
   global password
   password = reload(password)  # pylint: disable=redefined-outer-name
