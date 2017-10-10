@@ -8,6 +8,7 @@ import argparse
 import collections
 import datetime
 import fractions
+import importlib
 import itertools
 import math
 import multiprocessing
@@ -418,9 +419,13 @@ def Main():
   pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
   pairings = pairer.Search(seconds=4000, random_pairings=FLAGS.cycle in (1,))
   print(pairings)
-  global password
-  password = reload(password)  # pylint: disable=redefined-outer-name
-  pairer.Writeback(pairings)
+
+  if FLAGS.write_pairings:
+    # Some aspect of the connection to the spreadsheet can go stale. Reload it
+    # just before writing to make sure it's fresh.
+    global password
+    password = importlib.reload(password)  # pylint: disable=redefined-outer-name
+    pairer.Writeback(pairings)
 
 
 if __name__ == '__main__':
