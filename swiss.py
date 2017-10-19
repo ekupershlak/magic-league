@@ -283,7 +283,7 @@ class Pairer(object):
           return
         s.pop()
         # The constraint labeled putative failed when it was added on a previous
-        # run, so the minimum (inclusive) is that + 1.
+        # run, so the minimum (inclusive) is that value plus one.
         minimum = (loss + minimum) // 2 + 1
         s.add(metric >= minimum)  # Definite: never getting rolled back.
         s.push()
