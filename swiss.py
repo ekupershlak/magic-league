@@ -396,9 +396,11 @@ class Pairer(object):
 
   def PrintModel(self, slots, model, final_loss, stream=sys.stdout):
     """Print a pretty table of the model to the given stream."""
+    total_matches = 0
     for n, row in reversed(list(slots.items())):
       for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
+          total_matches += 1
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
           print(
@@ -410,7 +412,8 @@ class Pairer(object):
     print(
         'Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2), file=stream)
     print(
-        'Root Mean Squared Error: {:.4f}'.format(self._RMSE(final_loss)),
+        'Root Mean Squared Error: {:.4f}'.format(
+            self._RMSE(final_loss / total_matches)),
         file=stream)
 
   def ModelPlayers(self, slots, model):
