@@ -79,7 +79,7 @@ def Even(n):
 
 
 def Lcm(a, b):
-  return a * b / fractions.gcd(a, b)
+  return a * b // math.gcd(a, b)
 
 
 def Timeleft(deadline):
@@ -197,8 +197,9 @@ def MismatchSum(slots, scores, lcm):
         # needing it.
         # diff = round(diff, 3)
         # diff = fractions.Fraction(diff).limit_denominator(500)
+        assert (diff.numerator * lcm**2) % diff.denominator == 0
         sq_terms.append(
-            z3.If(slot, diff.numerator * lcm // diff.denominator, 0))
+            z3.If(slot, (diff.numerator * lcm**2) // diff.denominator, 0))
   return z3.Sum(sq_terms)
 
 
