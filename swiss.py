@@ -299,7 +299,7 @@ class Pairer(object):
 
     final_loss = int(str(model.evaluate(metric)))
     self.PrintModel(slots, model, final_loss)
-    with file(
+    with open(
         'pairings-{s.set_code}{s.cycle}.txt'.format(s=self), 'w') as output:
       self.PrintModel(slots, model, final_loss, stream=output)
 
@@ -329,12 +329,12 @@ class Pairer(object):
     if from_cache:
       try:
         return pickle.load(open(filename, 'rb'))
-      except IOError:
+      except (IOError, EOFError):
         pass
     (names_scores_matches, previous_pairings, lcm,
      byed_name) = self._FetchFromSheet()
     pickle.dump((names_scores_matches, previous_pairings, lcm, byed_name),
-                open(filename, 'w'))
+                open(filename, 'wb'))
 
     return names_scores_matches, previous_pairings, lcm, byed_name
 
