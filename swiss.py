@@ -309,7 +309,7 @@ class Pairer(object):
     return pairings
 
   def _RMSE(self, loss):
-    return math.sqrt(fractions.Fraction(loss, self.lcm**2))
+    return math.sqrt(loss / self.lcm**2)
 
   def Writeback(self, pairings):
     spreadsheet = self.GetSpreadsheet()
