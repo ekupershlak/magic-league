@@ -30,7 +30,7 @@ flags.add_argument(
     help='the set code for the pairings spreadsheet',)
 flags.add_argument(
     'cycle',
-    metavar='N',
+    metavar='n',
     type=int,
     help='the cycle to pair',)
 flags.add_argument(
@@ -262,6 +262,8 @@ class Pairer(object):
     print('lcm is', self.lcm)
 
     minimum = 0
+    model = None
+    loss = None
     while True:
       s.set('timeout', Timeleft(deadline) * 1000)
       if Timeleft(deadline) > 0:
@@ -275,9 +277,7 @@ class Pairer(object):
           print('OPTIMAL!')
           break
       elif status == z3.unsat:
-        try:
-          model
-        except NameError:
+        if not model:
           print()
           print('You dun goofed (Formula is unsatisfiable at any loss).')
           return
