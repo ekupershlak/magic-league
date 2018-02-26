@@ -404,9 +404,13 @@ class Pairer(object):
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
           print(
-              '{:>7} {:>20} vs. {:<20} {:>7}'.format(
-                  '({})'.format(self.scores[m]), player, opponent,
-                  '({})'.format(self.scores[n])),
+              # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
+              '{:>7} {:>28} vs. {:<28} {:>7}'.format(
+                  '({})'.format(self.scores[m]),
+                  player,
+                  opponent,
+                  '({})'.format(self.scores[n]),
+              ),
               file=stream)
     print(file=stream)
     print(
