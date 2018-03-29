@@ -11,7 +11,7 @@ PACK_SIZE = 15
 
 dist = collections.defaultdict(int)
 
-strains = '12345678'
+strains = '12345ABC'
 primaries = strains[:5]
 
 
