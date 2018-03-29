@@ -1,3 +1,10 @@
+# Data files
+???-?
+rss
+top-*-batch-??
+pairings-????.txt
+
+
 # The credentials file that should never be committed
 credentials.json
 
