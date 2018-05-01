@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.6
 # -*- encoding: utf-8 -*-
 """Generate cube packs according to a collation."""
 
