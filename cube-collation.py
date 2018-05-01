@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-"""Generate cube packs according to a Wizards-like collation."""
+"""Generate cube packs according to a collation."""
 
 from __future__ import print_function
 
