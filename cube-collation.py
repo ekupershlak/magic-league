@@ -1,7 +1,6 @@
+#!/usr/bin/python3
 # -*- encoding: utf-8 -*-
 """Generate cube packs according to a collation."""
-
-from __future__ import print_function
 
 import collections
 import random
