@@ -463,7 +463,11 @@ def ArrayDecrement(indices, array):
 
 
 def ImportanceSampledBlitzsteinDiaconis(d, n=100):
-  """Sample from `n` graphs according to their probability of generation."""
+  """Sample from `n` graphs according to their probability of generation.
+
+  See §8 of
+  http://www.people.fas.harvard.edu/~blitz/BlitzsteinDiaconisGraphAlgorithm.pdf
+"""
   population = []
   weights = []
   for _ in range(n):
@@ -474,7 +478,11 @@ def ImportanceSampledBlitzsteinDiaconis(d, n=100):
 
 
 def BlitzsteinDiaconis(d):
-  """Generates a random graph with degree sequence `d`."""
+  """Generates a random graph with degree sequence `d`.
+
+  See §4 of
+  http://www.people.fas.harvard.edu/~blitz/BlitzsteinDiaconisGraphAlgorithm.pdf
+  """
   d = d[:]
   equivalence_class_size = 1
   likelihood = fractions.Fraction(1)
