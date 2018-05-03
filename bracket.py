@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # -*- encoding: utf-8 -*-
 
 from __future__ import print_function
@@ -8,30 +9,34 @@ import sys
 import html
 import requests
 
+RO = 1024
+TOP = RO // 2
+
 try:
-  rss = open('rssl').read()
+  rss = open('rss').read()
 except IOError:
-  rss = requests.get('https://mtgbracket.tumblr.com/rss').text
+  rss = html.unescape(
+      html.unescape(requests.get('https://mtgbracket.tumblr.com/rss').text))
   open('rss', 'w').write(rss)
 
-rsses = re.findall(r'Round of 2048 - Batch (\d+) results.*?'
-                   r'Visual results are(.*?)</description>', rss, re.DOTALL)
-
-batch_number, post = rsses[0]
-post = html.unescape(html.unescape(post))
+batches = re.findall(f'Round of {RO} - Batch (\\d+) results.*?'
+                     f'Visual results are(.*?)Full results', rss, re.DOTALL)
+batches.sort(key=lambda b: int(b[0]))
+batch_number, post = batches[-1]
+batch_number = int(batch_number)
 post = re.sub('’', "'", post)
 post = re.sub(r'\s+', ' ', post)
 
-cardname = r"\w[\w '\-,/\.]*?"
-x = [
-    a
-    for a, b in re.findall(r'\b({0}) defeats ({0}) with \d{{2}}\.\d{{2}}%'.
-                           format(cardname), post, re.DOTALL | re.UNICODE)
-]
-if len(x) < 32:
+cardname_pattern = r"\w[\w '\-,/\.]*?"
+result_pattern = r'\b({0}) defeats ({0}) with \d{{2}}\.\d{{2}}%'.format(
+    cardname_pattern)
+x = [a for a, b in re.findall(result_pattern, post, re.DOTALL | re.UNICODE)]
+if len(x) < 16:
   print('WARNING: Found {} winners.'.format(len(x)), file=sys.stderr)
 
-out = open('top-1024-batch-{:02d}'.format(int(batch_number)), 'w')
+filename = f'top-{TOP:d}-batch-{batch_number:02d}'
+print(f'Writing to {filename}')
+out = open(filename, 'w')
 for card in x:
   print(card, file=out)
   # print(card)
