@@ -11,7 +11,6 @@ import fractions
 import importlib
 import itertools
 import math
-import multiprocessing
 import pickle
 import random
 import sys
@@ -85,6 +84,7 @@ def Lcm(a, b):
 def Timeleft(deadline):
   return int(deadline - time.time() + 0.5)
 
+BoolToInt = z3.Function('BoolToInt', z3.BoolSort(), z3.IntSort())
 
 def MakeSlots(n_players):
   """Creates output pairing variables."""
@@ -99,38 +99,15 @@ def MakeSlots(n_players):
 def PopCount(vs, n):
   if n == 0:
     return z3.Not(z3.Or(vs))
-  if n in (1, 2, 3):
-    return EnumeratedPopCount(vs, n)
-  else:
-    terms = [z3.Or(vs)]
-    for i, v in enumerate(vs):
-      before = vs[:i]
-      after = vs[i + 1:]
-      terms.append(z3.Or([z3.And(
-          z3.Implies(v, PopCount(before, a)), z3.Implies(v, PopCount(
-              after, n - 1 - a))) for a in range(n)]))
-    return z3.And(terms)
+  return SummationPopCount(vs, n)
 
 
-def EnumeratedPopCount(vs, n):
-  if n == 0:
-    return z3.Not(z3.Or(vs))
-  else:
-    options = []
-    # z3 objects override equality, so they misbehave in containers. Enumerate
-    # them to get well-behaved surrogates.
-    for combo in itertools.combinations(enumerate(vs), n):
-      options.append(z3.And([v if (i, v) in combo else z3.Not(v)
-                             for (i, v) in enumerate(vs)]))
-    return z3.Or(options)
-
-
-def ToSMTLIB2(f, status='unknown', name='benchmark', logic=''):
-  """Convert the formula f to a SMT-LIB 2.0 string."""
-  v = (z3.Ast * 0)()
-  return z3.Z3_benchmark_to_smtlib_string(f.ctx_ref(), name, logic, status, '',
-                                          0, v, f.as_ast())
-
+def SummationPopCount(vs, n):
+  terms = []
+  terms.append(BoolToInt(False) == 0)
+  terms.append(BoolToInt(True) == 1)
+  terms.append(z3.Sum([BoolToInt(v) for v in vs]) == n)
+  return z3.And(terms)
 
 def RequestedMatches(slots, requested_matches, reverse_players):
   """Guarantees players get their requested number of matches.
@@ -149,12 +126,10 @@ def RequestedMatches(slots, requested_matches, reverse_players):
   order = sorted(
       range(n_players), key=lambda n: requested_matches[n], reverse=True)
 
-  pool = multiprocessing.Pool(multiprocessing.cpu_count())
-
   args = [(n, reverse_players[n], requested_matches[n], n_players)
           for n in order]
-  for result in pool.map(RequestedMatchesForOnePlayer, args):
-    yield z3.parse_smt2_string(result)
+  for argtuple in args:
+    yield RequestedMatchesForOnePlayer(argtuple)
 
 
 def RequestedMatchesForOnePlayer(args):
@@ -168,7 +143,7 @@ def RequestedMatchesForOnePlayer(args):
       n_adjacency.append(slots[n][m])
     elif n > m:
       n_adjacency.append(slots[m][n])
-  return ToSMTLIB2(PopCount(n_adjacency, requested))
+  return PopCount(n_adjacency, requested)
 
 
 def NoRepeatMatches(slots, previous_pairings, reverse_players):
