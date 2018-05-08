@@ -96,13 +96,6 @@ def MakeSlots(n_players):
   return slots
 
 
-def ExactlyOne(vs):
-  at_least_one = z3.Or(vs)
-  at_most_one = z3.And([z3.Implies(v, z3.Not(z3.Or([w for w in vs if w is not v
-                                                   ]))) for v in vs])
-  return z3.And(at_least_one, at_most_one)
-
-
 def PopCount(vs, n):
   if n == 0:
     return z3.Not(z3.Or(vs))
