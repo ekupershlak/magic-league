@@ -400,7 +400,7 @@ def Main():
   global FLAGS
   FLAGS = flags.parse_args(sys.argv[1:])
   pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
-  pairings = pairer.Search(seconds=4000, random_pairings=FLAGS.cycle in (1,))
+  pairings = pairer.Search(seconds=600, random_pairings=FLAGS.cycle in (1,))
   print(pairings)
 
   if FLAGS.write_pairings:
