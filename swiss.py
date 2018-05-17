@@ -26,17 +26,27 @@ flags.add_argument(
     'set_code',
     metavar='XYZ',
     type=str,
-    help='the set code for the pairings spreadsheet',)
+    help='the set code for the pairings spreadsheet',
+)
 flags.add_argument(
     'cycle',
     metavar='n',
     type=int,
-    help='the cycle to pair',)
+    help='the cycle to pair',
+)
 flags.add_argument(
     '--write_pairings',
     action='store_true',
-    help='whether to write the pairings to the spreadsheet',)
-FLAGS = None
+    help='whether to write the pairings to the spreadsheet',
+)
+flags.add_argument(
+    '--time_limit',
+    metavar='n',
+    type=int,
+    default=600,
+    help='time limit in seconds',
+)
+FLAGS = flags.parse_args(sys.argv[1:])
 
 
 class NamedStack(z3.Solver):
@@ -397,10 +407,9 @@ class Pairer(object):
 
 def Main():
   """Fetch records from the spreadsheet, generate pairings, write them back."""
-  global FLAGS
-  FLAGS = flags.parse_args(sys.argv[1:])
   pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
-  pairings = pairer.Search(seconds=600, random_pairings=FLAGS.cycle in (1,))
+  pairings = pairer.Search(
+      seconds=FLAGS.time_limit, random_pairings=FLAGS.cycle in (1,))
   print(pairings)
 
   if FLAGS.write_pairings:
