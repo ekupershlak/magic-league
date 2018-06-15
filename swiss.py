@@ -436,7 +436,15 @@ def ImportanceSampledBlitzsteinDiaconis(d, n=100):
 
   See §8 of
   http://www.people.fas.harvard.edu/~blitz/BlitzsteinDiaconisGraphAlgorithm.pdf
-"""
+
+  Args:
+    d: a graphical degree sequence
+    n: size of pool from which the final graph will be sampled by importance
+  Returns:
+    A graph with degree sequence `d`.
+  Raises:
+    ValueError: if d is not graphical
+  """
   population = []
   weights = []
   for _ in range(n):
@@ -451,6 +459,13 @@ def BlitzsteinDiaconis(d):
 
   See §4 of
   http://www.people.fas.harvard.edu/~blitz/BlitzsteinDiaconisGraphAlgorithm.pdf
+
+  Args:
+    d: a graphical degree sequence
+  Returns:
+    A graph with degree sequence `d`.
+  Raises:
+    ValueError: if d is not graphical
   """
   d = d[:]
   equivalence_class_size = 1
