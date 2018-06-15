@@ -96,7 +96,6 @@ def Lcm(a, b):
 def Timeleft(deadline):
   return int(deadline - time.time() + 0.5)
 
-BoolToInt = z3.Function('BoolToInt', z3.BoolSort(), z3.IntSort())
 
 def MakeSlots(n_players):
   """Creates output pairing variables."""
@@ -109,17 +108,8 @@ def MakeSlots(n_players):
 
 
 def PopCount(vs, n):
-  if n == 0:
-    return z3.Not(z3.Or(vs))
-  return SummationPopCount(vs, n)
+  return z3.PbEq(list(zip(vs, itertools.repeat(1))), n)
 
-
-def SummationPopCount(vs, n):
-  terms = []
-  terms.append(BoolToInt(False) == 0)
-  terms.append(BoolToInt(True) == 1)
-  terms.append(z3.Sum([BoolToInt(v) for v in vs]) == n)
-  return z3.And(terms)
 
 def RequestedMatches(slots, requested_matches, reverse_players):
   """Guarantees players get their requested number of matches.
