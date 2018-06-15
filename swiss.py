@@ -155,21 +155,19 @@ def NoRepeatMatches(slots, previous_pairings, reverse_players):
         yield z3.Not(slots[n][m])
 
 
-def MismatchSum(slots, scores, lcm):
+def MismatchSum(slots, scores):
   """Terms for sum of mismatch and squared mismatch."""
+  lcm = 1
+  for d in set(score.denominator for score in scores.values()):
+    lcm = Lcm(lcm, d)
+  print(f'lcm is indeed {lcm}')
   sq_terms = []
   for n, row in list(slots.items()):
     for m, slot in list(row.items()):
       if n < m:
         diff = (scores[m] - scores[n])**2
-        # This may be necessary if the formula can't be solved at full
-        # precision. Remove this if you get through a whole league without
-        # needing it.
-        # diff = round(diff, 3)
-        # diff = fractions.Fraction(diff).limit_denominator(500)
-        assert (diff.numerator * lcm**2) % diff.denominator == 0
-        sq_terms.append(
-            z3.If(slot, (diff.numerator * lcm**2) // diff.denominator, 0))
+        assert int(diff * lcm**2) == diff * lcm**2
+        sq_terms.append(z3.If(slot, int(diff * lcm**2), 0))
   return z3.Sum(sq_terms)
 
 
@@ -180,17 +178,20 @@ class Pairer(object):
     self.set_code = set_code
     self.cycle = cycle
 
-    (names_scores_matches, self.previous_pairings, self.lcm,
+    (names_scores_matches, self.previous_pairings, _,
      self.byed_name) = self._Fetch()
     self.players = {
         name: id
         for (id, (name, _, _)) in zip(itertools.count(), names_scores_matches)
     }
-
     self.scores = {
         id: score
         for (id, (_, score, _)) in zip(itertools.count(), names_scores_matches)
     }
+    self.lcm = 1
+    for d in set(score.denominator for score in self.scores.values()):
+      self.lcm = Lcm(self.lcm, d)
+
     self.requested_matches = {
         id: m
         for (id, (_, _, m)) in zip(itertools.count(), names_scores_matches)
@@ -208,7 +209,7 @@ class Pairer(object):
   def Search(self, seconds=3600, random_pairings=False):
     """Constructs an SMT problem for pairings and solves it."""
     deadline = time.time() + seconds
-    s = NamedStack()
+    s = z3.Optimize()
     s.push()
 
     slots = MakeSlots(len(self.players))
@@ -225,48 +226,25 @@ class Pairer(object):
         pairings.append((self.reverse_players[i], self.reverse_players[j]))
       print('Random pairings')
       return pairings
-    metric = MismatchSum(slots, self.scores, self.lcm)
+    metric = MismatchSum(slots, self.scores)
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
       s.add(term)
     print('lcm is', self.lcm)
 
-    minimum = 0
-    model = None
-    loss = None
-    while True:
-      s.set('timeout', Timeleft(deadline) * 1000)
-      if Timeleft(deadline) > 0:
-        print(
-            'Time budget:', str(datetime.timedelta(seconds=Timeleft(deadline))))
-        status = s.check()
-      if status == z3.sat:
-        model = s.model()
-        loss = int(str(model.evaluate(metric)))
-        if loss == minimum:
-          print('OPTIMAL!')
-          break
-      elif status == z3.unsat:
-        if not model:
-          print()
-          print('You dun goofed (Formula is unsatisfiable at any loss).')
-          return
-        s.pop()
-        # The constraint labeled putative failed when it was added on a previous
-        # run, so the minimum (inclusive) is that value plus one.
-        minimum = (loss + minimum) // 2 + 1
-        s.add(metric >= minimum)  # Definite: never getting rolled back.
-        s.push()
-      else:
-        print('Time limit reached.')
-        s.pop()
-        s.push()
-        s.add(metric <= loss)  # Final: the best result to explore.
-        break
-      print('Loss: {:d}\tMinimum: {:d}'.format(loss, minimum))
-      s.push()
-      s.add(metric <= (loss + minimum) // 2)  # Putative
+    s.minimize(metric)
+    s.set('timeout', Timeleft(deadline) * 1000)
+    status = s.check()
+    if status == z3.unsat:
+      print()
+      print('You dun goofed (Formula is unsatisfiable at any loss).')
+      return
+    elif status == z3.unknown:
+      print('Time limit reached.')
+    else:
+      print('OPTIMAL!')
 
+    model = s.model()
     final_loss = int(str(model.evaluate(metric)))
     self.PrintModel(slots, model, final_loss)
     with open(
@@ -306,7 +284,7 @@ class Pairer(object):
     pickle.dump((names_scores_matches, previous_pairings, lcm, byed_name),
                 open(filename, 'wb'))
 
-    return names_scores_matches, previous_pairings, lcm, byed_name
+    return names_scores_matches, previous_pairings, None, byed_name
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
@@ -317,11 +295,11 @@ class Pairer(object):
     wins, losses, draws = [
         [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
     ]
-    scores = [fractions.Fraction(3 * w, 3 * (w + l + d)) if w + l + d else
-              fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)]
-    lcm = 1
-    for d in set(score.denominator for score in scores):
-      lcm = Lcm(lcm, d)
+    scores = [
+        fractions.Fraction(3 * w, 3 * (w + l + d))
+        if w + l + d else fractions.Fraction(1, 2)
+        for w, l, d in zip(wins, losses, draws)
+    ]
 
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
@@ -359,7 +337,7 @@ class Pairer(object):
 
     names_scores_matches = list(zip(names, scores, requested_matches))
     random.shuffle(names_scores_matches)
-    return names_scores_matches, previous_pairings, lcm, byed_name
+    return names_scores_matches, previous_pairings, None, byed_name
 
   def GetSpreadsheet(self):
     return password.gc.open('magic-ny {} Sealed League'.format(self.set_code))
@@ -402,7 +380,6 @@ def Main():
   pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
   pairings = pairer.Search(
       seconds=FLAGS.time_limit, random_pairings=FLAGS.cycle in (1,))
-  print(pairings)
 
   if FLAGS.write_pairings:
     # Some aspect of the connection to the spreadsheet can go stale. Reload it
