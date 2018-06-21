@@ -347,6 +347,7 @@ def Main():
     pairer.Writeback(pairings)
 
 
+# Support functions for random pairings.
 def Graphical(d):
   n = len(d)
   if any(di < 0 for di in d):
