@@ -217,9 +217,6 @@ class Pairer(object):
       pairings.append((self.byed_name, BYE))
     return pairings
 
-  def _RMSE(self, loss):
-    return math.sqrt(loss / self.lcm**2)
-
   def Writeback(self, pairings):
     spreadsheet = self.GetSpreadsheet()
     ws_name = 'Cycle ' + str(self.cycle)
@@ -325,8 +322,8 @@ class Pairer(object):
     print(
         'Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2), file=stream)
     print(
-        'Root Mean Squared Error: {:.4f}'.format(
-            self._RMSE(final_loss / total_matches)),
+        'Root Mean Squared Error: {rmse:.4f}'.format(
+            rmse=math.sqrt(final_loss / self.lcm**2 / total_matches)),
         file=stream)
 
   def ModelPlayers(self, slots, model):
