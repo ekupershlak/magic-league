@@ -72,8 +72,8 @@ def MakeSlots(n_players):
   return slots
 
 
-def PopCount(vs, n):
-  return z3.PbEq(list(zip(vs, itertools.repeat(1))), n)
+def PopCount(bools, n):
+  return z3.PbEq(list(zip(bools, itertools.repeat(1))), n)
 
 
 def RequestedMatches(slots, requested_matches, reverse_players):
