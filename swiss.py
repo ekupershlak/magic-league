@@ -360,6 +360,7 @@ def Graphical(d):
 
 
 def ArrayDecrement(indices, array):
+  """Returns *copy of* `array`, having decremented each index in `indices`."""
   a = array[:]
   for i in indices:
     a[i] -= 1
