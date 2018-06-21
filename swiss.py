@@ -31,7 +31,7 @@ flags.add_argument(
     'cycle',
     metavar='n',
     type=int,
-    help='the cycle to pair',
+    help='the cycle number to pair',
 )
 flags.add_argument(
     '-w',
