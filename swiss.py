@@ -50,42 +50,8 @@ flags.add_argument(
 FLAGS = flags.parse_args(sys.argv[1:])
 
 
-class NamedStack(z3.Solver):
-  """A z3.Solver that supports pushing and popping to named frames."""
-
-  def __init__(self, *args, **kwargs):
-    z3.Solver.__init__(self, *args, **kwargs)
-    self._names = {}
-    self._depth = 0
-
-  def push(self, name=None):
-    if name:
-      self._names[name] = self._depth
-    z3.Solver.push(self)
-    self._depth += 1
-
-  def pop(self, name=None):
-    if name:
-      while self._depth > self._names[name]:
-        z3.Solver.pop(self)
-        self._depth -= 1
-      self._names.pop(name)
-    else:
-      z3.Solver.pop(self)
-      self._depth -= 1
-
-
-def Take(n, iterable):
-  """Returns first n items of the iterable as a list."""
-  return list(itertools.islice(iterable, n))
-
-
 def Odd(n):
   return n % 2 == 1
-
-
-def Even(n):
-  return n % 2 == 0
 
 
 def Lcm(a, b):
