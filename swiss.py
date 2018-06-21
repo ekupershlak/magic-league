@@ -89,10 +89,8 @@ def RequestedMatches(slots, requested_matches, reverse_players):
   """
 
   n_players = len(slots) + 1
-
   order = sorted(
       range(n_players), key=lambda n: requested_matches[n], reverse=True)
-
   args = [(n, reverse_players[n], requested_matches[n], n_players)
           for n in order]
   for argtuple in args:
@@ -121,7 +119,7 @@ def NoRepeatMatches(slots, previous_pairings, reverse_players):
 
 
 def MismatchSum(slots, scores):
-  """Terms for sum of mismatch and squared mismatch."""
+  """Returns an IntSort term for sum of squared mismatch."""
   lcm = 1
   for d in set(score.denominator for score in scores.values()):
     lcm = Lcm(lcm, d)
@@ -153,14 +151,13 @@ class Pairer(object):
         id: score
         for (id, (_, score, _)) in zip(itertools.count(), names_scores_matches)
     }
-    self.lcm = 1
-    for d in set(score.denominator for score in self.scores.values()):
-      self.lcm = Lcm(self.lcm, d)
-
     self.requested_matches = {
         id: m
         for (id, (_, _, m)) in zip(itertools.count(), names_scores_matches)
     }
+    self.lcm = 1
+    for d in set(score.denominator for score in self.scores.values()):
+      self.lcm = Lcm(self.lcm, d)
 
   @property
   def reverse_players(self):
