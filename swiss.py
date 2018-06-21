@@ -123,7 +123,6 @@ def MismatchSum(slots, scores):
   lcm = 1
   for d in set(score.denominator for score in scores.values()):
     lcm = Lcm(lcm, d)
-  print(f'lcm is indeed {lcm}')
   sq_terms = []
   for n, row in list(slots.items()):
     for m, slot in list(row.items()):
