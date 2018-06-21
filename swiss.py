@@ -168,15 +168,7 @@ class Pairer(object):
             for (id, score) in list(self.scores.items())}
 
   def Search(self, seconds=3600, random_pairings=False):
-    """Constructs an SMT problem for pairings and solves it."""
-    deadline = time.time() + seconds
-    s = z3.Optimize()
-    s.push()
-
-    slots = MakeSlots(len(self.players))
-    for term in NoRepeatMatches(slots, self.previous_pairings,
-                                self.reverse_players):
-      s.add(term)
+    """Constructs an SMT problem for pairings and optimizes it."""
     if random_pairings:
       degree_sequence = [d for (_, d) in sorted(self.requested_matches.items())]
       edge_set = ImportanceSampledBlitzsteinDiaconis(degree_sequence)
@@ -187,6 +179,14 @@ class Pairer(object):
         pairings.append((self.reverse_players[i], self.reverse_players[j]))
       print('Random pairings')
       return pairings
+
+    deadline = time.time() + seconds
+    s = z3.Optimize()
+    slots = MakeSlots(len(self.players))
+    for term in NoRepeatMatches(slots, self.previous_pairings,
+                                self.reverse_players):
+      s.add(term)
+
     metric = MismatchSum(slots, self.scores)
     for term in RequestedMatches(slots, self.requested_matches,
                                  self.reverse_players):
