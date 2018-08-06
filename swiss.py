@@ -179,6 +179,7 @@ class Pairer(object):
       for (i, j) in edge_set:
         pairings.append((self.reverse_players[i], self.reverse_players[j]))
       print('Random pairings')
+      print(pairings)
       return pairings
 
     deadline = time.time() + seconds
