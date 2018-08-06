@@ -36,13 +36,13 @@ flags.add_argument(
 )
 flags.add_argument(
     '-w',
-    '--write_pairings',
+    '--write',
     action='store_true',
     help='whether to write the pairings to the spreadsheet',
 )
 flags.add_argument(
     '-t',
-    '--time_limit',
+    '--timeout',
     metavar='n',
     type=int,
     default=600,
