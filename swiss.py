@@ -10,6 +10,7 @@ import fractions
 import importlib
 import itertools
 import math
+import operator
 import pickle
 import random
 import sys
@@ -302,22 +303,27 @@ class Pairer(object):
 
   def PrintModel(self, slots, model, final_loss, stream=sys.stdout):
     """Print a pretty table of the model to the given stream."""
-    total_matches = 0
+    mismatches_and_lines = []
     for n, row in reversed(list(slots.items())):
       for m, playing in reversed(list(row.items())):
         if str(model.evaluate(playing)) == 'True':
-          total_matches += 1
           player = self.reverse_players[m]
           opponent = self.reverse_players[n]
-          print(
-              # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
-              '{:>7} {:>28} vs. {:<28} {:>7}'.format(
-                  '({})'.format(self.scores[m]),
-                  player,
-                  opponent,
-                  '({})'.format(self.scores[n]),
-              ),
-              file=stream)
+          # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
+          line = '{:>7} {:>28} vs. {:<28} {:>7}'.format(
+              '({})'.format(self.scores[m]),
+              player,
+              opponent,
+              '({})'.format(self.scores[n]),
+          )
+          mismatch = abs(self.scores[m] - self.scores[n])
+          mismatches_and_lines.append((mismatch, line))
+    total_matches = len(mismatches_and_lines)
+    mismatches_and_lines.sort(key=operator.itemgetter(0))
+    for mismatch, line in mismatches_and_lines:
+      if mismatch and stream.isatty():
+        line = '\033[1m{}\033[0m'.format(line)
+      print(line, file=stream)
     print(file=stream)
     print(
         'Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2), file=stream)
