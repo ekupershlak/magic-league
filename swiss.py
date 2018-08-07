@@ -357,6 +357,7 @@ def Main():
 
 # Support functions for random pairings.
 def Graphical(d):
+  """Whether the given degree sequence is graphical."""
   n = len(d)
   if any(di < 0 for di in d):
     return False
@@ -408,7 +409,8 @@ def BlitzsteinDiaconis(d):
   Args:
     d: a graphical degree sequence
   Returns:
-    A graph with degree sequence `d`.
+    Pair of (edge-set of a graph with degree sequence `d`,
+             relative liklihood of selecting this graph uniformly).
   Raises:
     ValueError: if d is not graphical
   """
