@@ -327,9 +327,10 @@ class Pairer(object):
       print(line, file=stream)
     print(file=stream)
     print(
-        'Loss over LCM²: {} / {}'.format(final_loss, self.lcm**2), file=stream)
+        'Total loss over LCM²: {} / {}'.format(final_loss, self.lcm**2),
+        file=stream)
     print(
-        'Root Mean Squared Error: {rmse:.4f}'.format(
+        'Root Mean Squared Error (per match): {rmse:.4f}'.format(
             rmse=math.sqrt(final_loss / self.lcm**2 / total_matches)),
         file=stream)
 
