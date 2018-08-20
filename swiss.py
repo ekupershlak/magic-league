@@ -345,9 +345,9 @@ def Main():
   """Fetch records from the spreadsheet, generate pairings, write them back."""
   pairer = Pairer(FLAGS.set_code, FLAGS.cycle)
   pairings = pairer.Search(
-      seconds=FLAGS.time_limit, random_pairings=FLAGS.cycle in (1,))
+      seconds=FLAGS.timeout, random_pairings=FLAGS.cycle in (1,))
 
-  if FLAGS.write_pairings:
+  if FLAGS.write:
     # Some aspect of the connection to the spreadsheet can go stale. Reload it
     # just before writing to make sure it's fresh.
     global password
