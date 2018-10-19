@@ -256,7 +256,7 @@ class Pairer(object):
         [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
     ]
     scores = [
-        fractions.Fraction(3 * w, 3 * (w + l + d))
+        fractions.Fraction(2 * w + d, 2 * (w + l + d))
         if w + l + d else fractions.Fraction(1, 2)
         for w, l, d in zip(wins, losses, draws)
     ]
