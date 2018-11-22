@@ -251,7 +251,7 @@ class Pairer(object):
 
     spreadsheet = self.GetSpreadsheet()
     standings = spreadsheet.worksheet('Standings')
-    names = standings.col_values(2)[1:]
+    names = standings.col_values(1)[1:]
     wins, losses, draws = [
         [int(n) for n in standings.col_values(4 + c)[1:]] for c in range(3)
     ]
