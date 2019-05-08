@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import argparse
 import collections
+import datetime
 import fractions
 import importlib
 import itertools
@@ -74,6 +75,16 @@ def MakeSlots(n_players):
 
 def PopCount(bools, n):
   return z3.PbEq(list(zip(bools, itertools.repeat(1))), n)
+
+
+THURSDAY = 3
+
+
+def CycleDeadline():
+  today = datetime.date.today()
+  weekday = today.weekday()
+  deadline = today + datetime.timedelta(days=14 - weekday + THURSDAY)
+  return deadline.strftime('%B %d')
 
 
 def RequestedMatches(slots, requested_matches, reverse_players):
@@ -219,14 +230,16 @@ class Pairer(object):
     return pairings
 
   def Writeback(self, pairings):
+    """Write the pairings to the sheet."""
     spreadsheet = self.GetSpreadsheet()
     ws_name = 'Cycle ' + str(self.cycle)
     output = spreadsheet.worksheet(ws_name)
-    pairings_range = output.range('B2:C' + str(len(pairings) + 1))
+    pairings_range = output.range(f'B2:C{len(pairings) + 1}')
     for cell, player in zip(pairings_range,
                             (player for row in pairings for player in row)):
       cell.value = player
     print('Writing to', ws_name)
+    output.update_acell('I1', CycleDeadline())
     output.update_cells(pairings_range)
 
   def _Fetch(self, from_cache=True):
