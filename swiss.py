@@ -1,5 +1,4 @@
-#!/bin/env python3
-# -*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*- python3
 """Solver for swiss pairings."""
 
 from __future__ import print_function
