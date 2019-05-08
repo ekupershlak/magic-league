@@ -185,6 +185,7 @@ class Pairer(object):
   def Search(self, seconds=3600, random_pairings=False):
     """Constructs an SMT problem for pairings and optimizes it."""
     if random_pairings:
+      print('Random pairings')
       degree_sequence = [d for (_, d) in sorted(self.requested_matches.items())]
       edge_set = ImportanceSampledBlitzsteinDiaconis(degree_sequence)
       pairings = []
@@ -192,7 +193,6 @@ class Pairer(object):
         pairings.append((self.byed_name, BYE))
       for (i, j) in edge_set:
         pairings.append((self.reverse_players[i], self.reverse_players[j]))
-      print('Random pairings')
       print(pairings)
       return pairings
 
