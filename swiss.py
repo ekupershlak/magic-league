@@ -94,6 +94,7 @@ def RequestedMatches(slots, requested_matches, reverse_players):
     slots: slot variables
     requested_matches: the number of matches each player has requested
     reverse_players: the reverse_players dict
+
   Yields:
     Terms over slots (to be added to a Solver) that guarantees players have
     their requested number of matches.
@@ -102,8 +103,9 @@ def RequestedMatches(slots, requested_matches, reverse_players):
   n_players = len(slots) + 1
   order = sorted(
       range(n_players), key=lambda n: requested_matches[n], reverse=True)
-  args = [(n, reverse_players[n], requested_matches[n], n_players)
-          for n in order]
+  args = [
+      (n, reverse_players[n], requested_matches[n], n_players) for n in order
+  ]
   for argtuple in args:
     yield RequestedMatchesForOnePlayer(argtuple)
 
@@ -175,8 +177,10 @@ class Pairer(object):
 
   @property
   def player_scores(self):
-    return {self.reverse_players[id]: score
-            for (id, score) in list(self.scores.items())}
+    return {
+        self.reverse_players[id]: score
+        for (id, score) in list(self.scores.items())
+    }
 
   def Search(self, seconds=3600, random_pairings=False):
     """Constructs an SMT problem for pairings and optimizes it."""
@@ -220,8 +224,8 @@ class Pairer(object):
     model = s.model()
     final_loss = int(str(model.evaluate(metric)))
     self.PrintModel(slots, model, final_loss)
-    with open(
-        'pairings-{s.set_code}{s.cycle}.txt'.format(s=self), 'w') as output:
+    with open('pairings-{s.set_code}{s.cycle}.txt'.format(s=self),
+              'w') as output:
       self.PrintModel(slots, model, final_loss, stream=output)
 
     pairings = list(self.ModelPlayers(slots, model))
@@ -277,7 +281,8 @@ class Pairer(object):
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
     names, requested_matches, scores = list(
-        zip(*[(n, rm, s) for (n, rm, s) in zip(names, requested_matches, scores)
+        zip(*[(n, rm, s)
+              for (n, rm, s) in zip(names, requested_matches, scores)
               if 0 < rm <= 3]))
     names = list(names)
     requested_matches = list(requested_matches)
@@ -398,6 +403,7 @@ def ImportanceSampledBlitzsteinDiaconis(d, n=100):
   Args:
     d: a graphical degree sequence
     n: size of pool from which the final graph will be sampled by importance
+
   Returns:
     A graph with degree sequence `d`.
   Raises:
@@ -420,6 +426,7 @@ def BlitzsteinDiaconis(d):
 
   Args:
     d: a graphical degree sequence
+
   Returns:
     Pair of (edge-set of a graph with degree sequence `d`,
              relative liklihood of selecting this graph uniformly).
@@ -438,10 +445,8 @@ def BlitzsteinDiaconis(d):
     equivalence_class_size *= minimum
     while d[i] > 0:
       candidates = {
-          j
-          for j in range(len(d))
-          if j != i and tuple(sorted((i, j))) not in e and
-          Graphical(ArrayDecrement((i, j), d))
+          j for j in range(len(d)) if j != i and tuple(sorted((
+              i, j))) not in e and Graphical(ArrayDecrement((i, j), d))
       }
       selection = random.choices(
           list(candidates), [d[j] for j in candidates], k=1)[0]
