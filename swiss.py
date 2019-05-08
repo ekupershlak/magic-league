@@ -48,7 +48,7 @@ flags.add_argument(
     default=600,
     help='time limit in seconds',
 )
-FLAGS = flags.parse_args(sys.argv[1:])
+FLAGS = None  # Parsing the flags needs to happen in main.
 
 
 def Odd(n):
@@ -456,4 +456,5 @@ def BlitzsteinDiaconis(d):
 
 
 if __name__ == '__main__':
+  FLAGS = flags.parse_args(sys.argv[1:])
   Main()
