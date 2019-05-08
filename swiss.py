@@ -300,13 +300,13 @@ class Pairer(object):
 
     if Odd(sum(requested_matches)):
       targetted_for_bye = 3
-      candidates = [
-          (i, name)
-          for i, (name, n_requested) in enumerate(zip(names, requested_matches))
-          if n_requested == targetted_for_bye and (name, BYE) not in
-          previous_pairings
-      ]
-      byed_i, byed_name = random.choice(candidates)
+      byed_i, byed_name = min(
+          ((i, name)
+           for i, (name, n_requested,
+                   score) in enumerate(zip(names, requested_matches, scores))
+           if n_requested == targetted_for_bye and
+           (name, BYE) not in previous_pairings),
+          key=lambda tup: tup[1][2])
       requested_matches[byed_i] -= 1
       print(byed_name, 'receives a bye.')
     else:
