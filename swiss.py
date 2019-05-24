@@ -164,11 +164,11 @@ class Pairer(object):
         elif player_a is None and player_b is None:
           row.append(0)
         else:
-          # Dense node meets singleton.
+          # Dense node meets singleton on the wrong side.
           row.append(EFFECTIVE_INFINITY)
     tour = elkai.solve_int_matrix(weights)
     pairings = []
-    for out, in_ in zip(tour, tour[1:] + [tour[0]]):
+    for out, in_ in zip(tour, tour[1:]):
       a = tsp_nodes[out][1]
       b = tsp_nodes[in_][0]
       if a and b:
@@ -179,7 +179,9 @@ class Pairer(object):
     if self.bye:
       pairings.append((self.bye, BYE))
     n = sum(p.requested_matches for p in self.players) // 2
-    print(f'I have {len(pairings)} matches but I should have {n}.')
+    print(
+        f'I have {len(pairings)} matches. I should have {n} (not counting BYE).'
+    )
     return pairings
 
 
