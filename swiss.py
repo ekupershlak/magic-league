@@ -108,10 +108,9 @@ class Pairer(object):
     if Odd(sum(p.requested_matches for p in self.players)):
       eligible_players = [
           p for p in self.players if p.requested_matches == 3
-          if BYE not in p.opponents
+          if BYE.id not in p.opponents
       ]
       bye = min(eligible_players, key=lambda p: (p.score, random.random()))
-      bye = self.players_by_id['sebh']
       self.players.remove(bye)
       self.bye = bye._replace(requested_matches=bye.requested_matches - 1)
       self.players.append(self.bye)
