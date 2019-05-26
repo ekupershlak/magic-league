@@ -197,10 +197,6 @@ class Pairer(object):
           (NodeType.DOUBLE, NodeType.SINGLE),
       ):
         pairings.append((p, q))
-    n = sum(p.requested_matches for p in self.players) // 2
-    print(
-        f'I have {len(pairings)} matches. I should have {n} (not counting BYE).'
-    )
     if self.bye:
       pairings.append((self.bye, BYE))
     return pairings
