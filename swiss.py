@@ -74,9 +74,10 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
       a_score = f'({a.score})'
       b_score = f'({b.score})'
       line = f'{a_score:>7} {a.name:>28} vs. {b.name:<28} {b_score:>7}'
-      if mismatch and stream.isatty():
+      if mismatch:
         final_loss += mismatch * lcm**2
-        line = '\033[1m{}\033[0m'.format(line)
+        if stream.isatty():
+          line = '\033[1m{}\033[0m'.format(line)
       print(line)
     print()
     print(f'Total loss over LCM²: {final_loss} / {lcm**2}')
