@@ -8,8 +8,8 @@ Username = Text
 
 
 class Player(NamedTuple):
-  name: Name
   id: Username
+  name: Name
   score: fractions.Fraction
   requested_matches: int
   opponents: Collection[Username]

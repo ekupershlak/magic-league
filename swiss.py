@@ -1,10 +1,9 @@
 # -*- encoding: utf-8 -*- python3
 """Solver for swiss pairings."""
 
-from __future__ import print_function
-
 import argparse
 import contextlib
+import enum
 import fractions
 import itertools
 import math
@@ -12,9 +11,9 @@ import random
 import sys
 from typing import List, Optional, Tuple
 
-import elkai
-
 import blitzstein_diaconis
+import elkai
+import numpy as np
 import player as player_lib
 import sheet_manager
 
@@ -46,7 +45,8 @@ flags.add_argument(
     help='time limit in seconds',
 )
 FLAGS = None  # Parsing the flags needs to happen in main.
-EFFECTIVE_INFINITY = 1 << 26
+EFFECTIVE_INFINITY = 1 << 20
+HUB_COST = 1
 
 
 def Odd(n):
@@ -85,7 +85,13 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
-BYE = player_lib.Player('BYE', 'noreply', fractions.Fraction(0), 0, [])
+BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
+
+
+class NodeType(enum.Enum):
+  SINGLE = 1
+  DOUBLE = 2
+  HUB = 3
 
 
 class Pairer(object):
@@ -105,6 +111,7 @@ class Pairer(object):
           if BYE not in p.opponents
       ]
       bye = min(eligible_players, key=lambda p: (p.score, random.random()))
+      bye = self.players_by_id['sebh']
       self.players.remove(bye)
       self.bye = bye._replace(requested_matches=bye.requested_matches - 1)
       self.players.append(self.bye)
@@ -137,51 +144,66 @@ class Pairer(object):
       self.lcm = Lcm(self.lcm, d)
 
     odd_players = list(p for p in self.players if Odd(p.requested_matches))
-    random.shuffle(odd_players)
+    # random.shuffle(odd_players)
     assert Even(len(odd_players))
+
     counter = itertools.count()
     tsp_nodes = {}
     for p in self.players:
       for _ in range(p.requested_matches // 2):
-        tsp_nodes[next(counter)] = (p, p)
-    num_odd_players = len(odd_players)
-    # for (a, b) in zip(odd_players[:num_odd_players // 2],
-    #                   odd_players[num_odd_players // 2:]):
-    for a in odd_players:
-      tsp_nodes[next(counter)] = (a, None)
-      tsp_nodes[next(counter)] = (None, a)
+        tsp_nodes[next(counter)] = (p, NodeType.DOUBLE)
+    for p in odd_players:
+      tsp_nodes[next(counter)] = (p, NodeType.SINGLE)
+      tsp_nodes[next(counter)] = (p, NodeType.HUB)
 
-    weights = []  # type: List[List[int]]
-    for (player_z, player_a) in tsp_nodes.values():
-      row = []
-      weights.append(row)
-      for (player_b, player_c) in tsp_nodes.values():
-        if player_a == player_b or player_z == player_c:
-          row.append(EFFECTIVE_INFINITY)
-        elif player_a is not None and player_b is not None:
-          row.append((int(player_a.score * self.lcm) -
-                      int(player_b.score * self.lcm))**2)
-        elif player_a is None and player_b is None:
-          row.append(0)
+    n = len(tsp_nodes)
+    weights = np.zeros((n, n), dtype=int)
+    for i in range(n):
+      for j in range(n):
+        p, ptype = tsp_nodes[i]
+        q, qtype = tsp_nodes[j]
+        if (ptype, qtype) in (
+            (NodeType.DOUBLE, NodeType.DOUBLE),
+            (NodeType.SINGLE, NodeType.SINGLE),
+            (NodeType.SINGLE, NodeType.DOUBLE),
+            (NodeType.DOUBLE, NodeType.SINGLE),
+        ):
+          if p == q:
+            weights[i, j] = EFFECTIVE_INFINITY
+          else:
+            weights[i, j] = (int(p.score * self.lcm) -
+                             int(q.score * self.lcm))**2
+        elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
+                                (NodeType.SINGLE, NodeType.HUB)):
+          if p == q:
+            weights[i, j] = 0
+          else:
+            weights[i, j] = EFFECTIVE_INFINITY
+        elif (ptype, qtype) in ((NodeType.HUB, NodeType.DOUBLE),
+                                (NodeType.DOUBLE, NodeType.HUB)):
+          weights[i, j] = EFFECTIVE_INFINITY
+        elif (ptype, qtype) == (NodeType.HUB, NodeType.HUB):
+          weights[i, j] = (HUB_COST * self.lcm)**2
         else:
-          # Dense node meets singleton on the wrong side.
-          row.append(EFFECTIVE_INFINITY)
+          assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
     tour = elkai.solve_int_matrix(weights)
     pairings = []
-    for out, in_ in zip(tour, tour[1:]):
-      a = tsp_nodes[out][1]
-      b = tsp_nodes[in_][0]
-      if a and b:
-        pairings.append((a, b))
-      ex = a.id if a else None
-      en = b.id if b else None
-      print(f'{ex}→{en}')
-    if self.bye:
-      pairings.append((self.bye, BYE))
+    for out, in_ in zip(tour, tour[1:] + [tour[0]]):
+      p, ptype = tsp_nodes[out]
+      q, qtype = tsp_nodes[in_]
+      if (ptype, qtype) in (
+          (NodeType.DOUBLE, NodeType.DOUBLE),
+          (NodeType.SINGLE, NodeType.SINGLE),
+          (NodeType.SINGLE, NodeType.DOUBLE),
+          (NodeType.DOUBLE, NodeType.SINGLE),
+      ):
+        pairings.append((p, q))
     n = sum(p.requested_matches for p in self.players) // 2
     print(
         f'I have {len(pairings)} matches. I should have {n} (not counting BYE).'
     )
+    if self.bye:
+      pairings.append((self.bye, BYE))
     return pairings
 
 
