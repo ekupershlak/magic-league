@@ -7,6 +7,7 @@ import enum
 import fractions
 import itertools
 import math
+import os
 import random
 import sys
 from typing import List, Optional, Tuple
@@ -206,6 +207,10 @@ def Main():
   pairer.GiveBye()
   pairings = pairer.Search(random_pairings=FLAGS.cycle in (1,))
   PrintPairings(pairings, pairer.lcm)
+  try:
+    os.mkdir('pairings')
+  except FileExistsError:
+    pass
   with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
             'w') as output:
     PrintPairings(pairings, pairer.lcm, stream=output)
