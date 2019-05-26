@@ -206,7 +206,8 @@ def Main():
   pairer.GiveBye()
   pairings = pairer.Search(random_pairings=FLAGS.cycle in (1,))
   PrintPairings(pairings, pairer.lcm)
-  with open(f'pairings-{FLAGS.set_code}{FLAGS.cycle}.txt', 'w') as output:
+  with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
+            'w') as output:
     PrintPairings(pairings, pairer.lcm, stream=output)
 
   if FLAGS.write:
