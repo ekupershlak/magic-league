@@ -217,7 +217,7 @@ def Main():
     PrintPairings(pairings, pairer.lcm, stream=output)
 
   if FLAGS.write:
-    sheet.Writeback(pairings)
+    sheet.Writeback(sorted(pairings))
 
 
 if __name__ == '__main__':
