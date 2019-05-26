@@ -136,9 +136,6 @@ class Pairer(object):
       print('Random pairings')
       return self.RandomPairings()
 
-    # Ensure NoRepeatMatches( self.previous_pairings, self.reverse_players)
-    # Define Metric MismatchSum(slots, self.scores)
-    # Ensure Requested Matches self.requested_matches, self.reverse_players
     for d in set(p.score.denominator for p in self.players):
       self.lcm = Lcm(self.lcm, d)
 
@@ -167,7 +164,7 @@ class Pairer(object):
             (NodeType.SINGLE, NodeType.DOUBLE),
             (NodeType.DOUBLE, NodeType.SINGLE),
         ):
-          if p == q:
+          if p == q or p.id in q.opponents or q.id in p.opponents:
             weights[i, j] = EFFECTIVE_INFINITY
           else:
             weights[i, j] = (int(p.score * self.lcm) -
