@@ -118,6 +118,16 @@ class Pairer(object):
       self.players.append(self.bye)
       return self.bye
 
+  def Search(self, random_pairings=False) -> Pairings:
+    if random_pairings:
+      print('Random pairings')
+      pairings = self.RandomPairings()
+    else:
+      pairings = self.TravellingSalesPairings()
+    if self.bye:
+      pairings.append((self.bye, BYE))
+    return pairings
+
   def RandomPairings(self) -> Pairings:
     """Generate and return random pairings."""
     degree_sequence = sorted(p.requested_matches for p in self.players)
@@ -132,12 +142,8 @@ class Pairer(object):
       pairings.append((self.bye, BYE))
     return pairings
 
-  def Search(self, random_pairings=False) -> Pairings:
-    """Constructs an SMT problem for pairings and optimizes it."""
-    if random_pairings:
-      print('Random pairings')
-      return self.RandomPairings()
-
+  def TravellingSalesPairings(self):
+    """Compute optimal pairings with a travelling-salesman solver."""
     for d in set(p.score.denominator for p in self.players):
       self.lcm = Lcm(self.lcm, d)
 
