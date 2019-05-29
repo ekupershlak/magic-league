@@ -190,20 +190,31 @@ class Pairer(object):
           weights[i, j] = (HUB_COST * self.lcm)**2
         else:
           assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
-    tour = elkai.solve_int_matrix(weights)
+
     pairings = []
-    for out, in_ in zip(tour, tour[1:] + [tour[0]]):
-      p, ptype = tsp_nodes[out]
-      q, qtype = tsp_nodes[in_]
-      if (ptype, qtype) in (
-          (NodeType.DOUBLE, NodeType.DOUBLE),
-          (NodeType.SINGLE, NodeType.SINGLE),
-          (NodeType.SINGLE, NodeType.DOUBLE),
-          (NodeType.DOUBLE, NodeType.SINGLE),
-      ):
-        pairings.append((p, q))
-    if self.bye:
-      pairings.append((self.bye, BYE))
+    expected_matches = sum(p.requested_matches for p in self.players) // 2
+    while len(pairings) < expected_matches:
+      pairings = []
+      tour = elkai.solve_int_matrix(weights)
+      for out, in_ in zip(tour, tour[1:] + [tour[0]]):
+        p, ptype = tsp_nodes[out]
+        q, qtype = tsp_nodes[in_]
+        if (ptype, qtype) in (
+            (NodeType.DOUBLE, NodeType.DOUBLE),
+            (NodeType.SINGLE, NodeType.SINGLE),
+            (NodeType.SINGLE, NodeType.DOUBLE),
+            (NodeType.DOUBLE, NodeType.SINGLE),
+        ):
+          if (p, q) in pairings or (q, p) in pairings:
+            weights[out, in_] = EFFECTIVE_INFINITY
+            weights[in_, out] = EFFECTIVE_INFINITY
+            o = tsp_nodes[out]
+            i = tsp_nodes[in_]
+            print(f'Nixing ({i[0].id}, {i[1]})--({o[0].id}, {o[1]}).')
+            break
+          else:
+            pairings.append((p, q))
+
     return pairings
 
 
