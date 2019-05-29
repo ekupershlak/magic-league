@@ -76,7 +76,7 @@ def BlitzsteinDiaconis(d) -> Tuple[fractions.Fraction, Graph]:
   likelihood = fractions.Fraction(1)
   e = set()
   if not Graphical(d):
-    raise ValueError('{} is not graphical.'.format(d))
+    raise ValueError(f'{d} is not graphical.')
   while any(di > 0 for di in d):
     minimum = min(di for di in d if di > 0)
     i = d.index(minimum)
@@ -93,6 +93,6 @@ def BlitzsteinDiaconis(d) -> Tuple[fractions.Fraction, Graph]:
       e.add(tuple(sorted((i, selection))))
       d = ArrayDecrement((i, selection), d)
       assert Graphical(d)
-  # print('c(Y) = {}'.format(equivalence_class_size))
-  # print('σ(Y) = {}'.format(likelihood))
+  # print(f'c(Y) = {equivalence_class_size}')
+  # print(f'σ(Y) = {likelihood}')
   return e, likelihood * equivalence_class_size

@@ -55,7 +55,7 @@ class SheetManager(object):
   def _FetchFromCache(self, from_cache=True):
     """Fetches data from local file, falling back to the spreadsheet."""
 
-    filename = '{s.set_code}-{s.cycle}'.format(s=self)
+    filename = f'{self.set_code}-{self.cycle}'
     if from_cache:
       try:
         return pickle.load(open(filename, 'rb'))
@@ -85,7 +85,7 @@ class SheetManager(object):
 
     previous_pairings = set()
     for i in range(1, self.cycle):
-      cycle_sheet = self.sheet.worksheet('Cycle {}'.format(i))
+      cycle_sheet = self.sheet.worksheet(f'Cycle {i}')
       a = cycle_sheet.col_values(1)[1:]  # type: List[Username]
       b = cycle_sheet.col_values(4)[1:]  # type: List[Username]
       previous_pairings |= set(zip(a, b))

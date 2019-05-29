@@ -77,7 +77,7 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
       if mismatch:
         final_loss += mismatch * lcm**2
         if stream.isatty():
-          line = '\033[1m{}\033[0m'.format(line)
+          line = f'\033[1m{line}\033[0m'
       print(line)
     print()
     print(f'Total loss over LCM²: {final_loss} / {lcm**2}')
