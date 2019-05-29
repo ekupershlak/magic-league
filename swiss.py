@@ -66,16 +66,16 @@ def Lcm(a, b):
 def PrintPairings(pairings, lcm, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
   my_pairings = sorted(
-      ((abs(a.score - b.score), (a, b)) for (a, b) in pairings), reverse=True)
+      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   final_loss = 0
   with contextlib.redirect_stdout(stream):
-    for mismatch, (a, b) in my_pairings:
+    for (a, b) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
       a_score = f'({a.score})'
       b_score = f'({b.score})'
       line = f'{a_score:>7} {a.name:>28} vs. {b.name:<28} {b_score:>7}'
-      if mismatch:
-        final_loss += mismatch * lcm**2
+      if abs(a.score - b.score) > 0:
+        final_loss += abs(a.score - b.score) * lcm**2
         if stream.isatty():
           line = f'\033[1m{line}\033[0m'
       print(line)
