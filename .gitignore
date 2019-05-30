@@ -5,9 +5,6 @@ top-*-batch-??
 pairings-????.txt
 
 
-# The credentials file that should never be committed
-credentials.json
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
