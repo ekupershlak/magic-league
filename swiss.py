@@ -246,7 +246,7 @@ class Pairer(object):
             weights[in_, out] = EFFECTIVE_INFINITY
             o = tsp_nodes[out]
             i = tsp_nodes[in_]
-            print(f'Nixing ({i[0].id}, {i[1]})--({o[0].id}, {o[1]}).')
+            print(f'Nixing repeat match: {i[0].id}–{o[0].id}.')
             break
           else:
             pairings.append((p, q))
