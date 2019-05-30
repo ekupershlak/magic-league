@@ -162,6 +162,7 @@ class Pairer(object):
       pairings = self.RandomPairings()
     else:
       pairings = self.TravellingSalesPairings()
+      pairings = SplitAll(pairings)
     if self.bye:
       pairings.append((self.bye, BYE))
     return pairings
