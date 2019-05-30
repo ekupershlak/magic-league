@@ -37,14 +37,6 @@ flags.add_argument(
     action='store_true',
     help='whether to write the pairings to the spreadsheet',
 )
-flags.add_argument(
-    '-t',
-    '--timeout',
-    metavar='n',
-    type=int,
-    default=600,
-    help='time limit in seconds',
-)
 
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = 1 << 20
