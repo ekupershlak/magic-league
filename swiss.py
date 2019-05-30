@@ -67,14 +67,15 @@ def Lcm(a, b):
   return a * b // math.gcd(a, b)
 
 
-def Loss(pairings):
+def SSE(pairings):
+  """Returns the sum of squared error (SSE) of pairings."""
   return sum((p.score - q.score)**2 for (p, q) in pairings)
 
 
 def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
   """Split the pairings loop into two loops at the best crossover point."""
   best_split = (pairings, [])
-  best_loss = Loss(pairings)
+  best_loss = SSE(pairings)
   for i in range(len(pairings)):
     for j in range(i, len(pairings)):
       # First check if the swap is valid.
@@ -87,9 +88,11 @@ def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
       right = pairings[i + 1:j]
       left.append((pairings[i][0], pairings[j][1]))
       right.append((pairings[j][0], pairings[i][1]))
-      if Loss(left + right) < best_loss:
-        best_loss = Loss(left + right)
+      if SSE(left + right) < best_loss:
+        best_loss = SSE(left + right)
         best_split = (left, right)
+  if best_split[1]:
+    print(f'Found a split that improves loss by {SSE(pairings) - best_loss}.')
   return best_split
 
 
@@ -101,7 +104,7 @@ def SplitAll(pairings: Pairings) -> Pairings:
   return SplitAll(left) + SplitAll(right)
 
 
-def PrintPairings(pairings, lcm, stream=sys.stdout):
+def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
   my_pairings = sorted(
       pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
@@ -116,8 +119,9 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
           line = f'\033[1m{line}\033[0m'
       print(line)
     print()
-    print(f'Total loss over LCM²: {Loss(pairings)} / {lcm**2}')
-    rmse = math.sqrt(Loss(pairings) / lcm**2 / len(pairings))
+    loss = SSE(pairings)
+    print(f'Loss: {loss!s}')
+    rmse = math.sqrt(SSE(pairings) / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
 
 
@@ -245,7 +249,6 @@ class Pairer(object):
             break
           else:
             pairings.append((p, q))
-
     return pairings
 
 
@@ -255,14 +258,14 @@ def Main():
   pairer = Pairer(sheet.GetPlayers())
   pairer.GiveBye()
   pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
-  PrintPairings(pairings, pairer.lcm)
+  PrintPairings(pairings)
   try:
     os.mkdir('pairings')
   except FileExistsError:
     pass
   with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
             'w') as output:
-    PrintPairings(pairings, pairer.lcm, stream=output)
+    PrintPairings(pairings, stream=output)
 
   if FLAGS.write:
     sheet.Writeback(sorted(pairings))
