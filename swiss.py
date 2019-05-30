@@ -69,13 +69,13 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
       pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   final_loss = 0
   with contextlib.redirect_stdout(stream):
-    for (a, b) in my_pairings:
+    for (p, q) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
-      a_score = f'({a.score})'
-      b_score = f'({b.score})'
-      line = f'{a_score:>7} {a.name:>28} vs. {b.name:<28} {b_score:>7}'
-      if abs(a.score - b.score) > 0:
-        final_loss += abs(a.score - b.score) * lcm**2
+      p_score = f'({p.score})'
+      q_score = f'({q.score})'
+      line = f'{p_score:>7} {p.name:>28} vs. {q.name:<28} {q_score:>7}'
+      if abs(p.score - q.score) > 0:
+        final_loss += abs(p.score - q.score) * lcm**2
         if stream.isatty():
           line = f'\033[1m{line}\033[0m'
       print(line)
