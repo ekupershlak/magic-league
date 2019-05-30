@@ -13,6 +13,14 @@ Google sheet that is specifically formatted.
 
 ## Setup
 
+### Install prerequisites
+
+```
+pip install -r requirements.txt
+```
+
+### Create `credentials.json`
+
 To connect to a spreadsheet for automatic import and export, you'll need to
 create a Google Cloud service account and populate `credentials.json`.
 
