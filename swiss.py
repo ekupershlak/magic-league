@@ -45,9 +45,13 @@ flags.add_argument(
     default=600,
     help='time limit in seconds',
 )
-FLAGS = None  # Parsing the flags needs to happen in main.
+
+BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = 1 << 20
+FLAGS = None  # Parsing the flags needs to happen in main.
 HUB_COST = 1
+
+Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
 
 def Odd(n):
@@ -63,11 +67,41 @@ def Lcm(a, b):
   return a * b // math.gcd(a, b)
 
 
+def Loss(pairings):
+  return sum((p.score - q.score)**2 for (p, q) in pairings)
+
+
+def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
+  best_split = (pairings, [])
+  best_loss = Loss(pairings)
+  for i in range(len(pairings)):
+    for j in range(i, len(pairings)):
+      # First check if the swap is valid.
+      if (pairings[i][0].id in pairings[j][1].opponents or
+          pairings[j][0].id in pairings[i][1].opponents or
+          pairings[i][1].id in pairings[j][0].opponents or
+          pairings[j][1].id in pairings[i][0].opponents):
+        continue
+      left = pairings[j + 1:] + pairings[:i]
+      right = pairings[i + 1:j]
+      left.append((pairings[i][0], pairings[j][1]))
+      right.append((pairings[j][0], pairings[i][1]))
+      if Loss(left + right) < best_loss:
+        best_loss = Loss(left + right)
+        best_split = (left, right)
+  return best_split
+
+def SplitAll(pairings: Pairings) -> Pairings:
+  left, right = SplitOnce(pairings)
+  if left == pairings:
+    return left
+  return SplitAll(left) + SplitAll(right)
+
 def PrintPairings(pairings, lcm, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(
-      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
-  final_loss = 0
+  my_pairings = sorted(pairings,
+                       key=lambda t: (t[0].score, t[1].score, t),
+                       reverse=True)
   with contextlib.redirect_stdout(stream):
     for (p, q) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
@@ -75,19 +109,13 @@ def PrintPairings(pairings, lcm, stream=sys.stdout):
       q_score = f'({q.score})'
       line = f'{p_score:>7} {p.name:>28} vs. {q.name:<28} {q_score:>7}'
       if abs(p.score - q.score) > 0:
-        final_loss += abs(p.score - q.score) * lcm**2
         if stream.isatty():
           line = f'\033[1m{line}\033[0m'
       print(line)
     print()
-    print(f'Total loss over LCM²: {final_loss} / {lcm**2}')
-    rmse = math.sqrt(final_loss / lcm**2 / len(pairings))
+    print(f'Total loss over LCM²: {Loss(pairings)} / {lcm**2}')
+    rmse = math.sqrt(Loss(pairings) / lcm**2 / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
-
-
-Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
-
-BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 
 
 class NodeType(enum.Enum):
