@@ -135,6 +135,8 @@ class Pairer(object):
     self.players_by_id = {player.id: player for player in players}
     self.bye = None
     self.lcm = 1
+    for d in set(p.score.denominator for p in self.players):
+      self.lcm = Lcm(self.lcm, d)
 
   def GiveBye(self) -> Optional[player_lib.Player]:
     """Give a player a bye and return that player."""
@@ -176,9 +178,6 @@ class Pairer(object):
 
   def TravellingSalesPairings(self):
     """Compute optimal pairings with a travelling-salesman solver."""
-    for d in set(p.score.denominator for p in self.players):
-      self.lcm = Lcm(self.lcm, d)
-
     odd_players = list(p for p in self.players if Odd(p.requested_matches))
     # random.shuffle(odd_players)
     assert Even(len(odd_players))
