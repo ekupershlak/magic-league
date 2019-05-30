@@ -72,6 +72,7 @@ def Loss(pairings):
 
 
 def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
+  """Split the pairings loop into two loops at the best crossover point."""
   best_split = (pairings, [])
   best_loss = Loss(pairings)
   for i in range(len(pairings)):
@@ -91,17 +92,19 @@ def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
         best_split = (left, right)
   return best_split
 
+
 def SplitAll(pairings: Pairings) -> Pairings:
+  """Recursively split the pairings as long as improvements are found."""
   left, right = SplitOnce(pairings)
   if left == pairings:
     return left
   return SplitAll(left) + SplitAll(right)
 
+
 def PrintPairings(pairings, lcm, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(pairings,
-                       key=lambda t: (t[0].score, t[1].score, t),
-                       reverse=True)
+  my_pairings = sorted(
+      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   with contextlib.redirect_stdout(stream):
     for (p, q) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
@@ -146,7 +149,8 @@ class Pairer(object):
       self.players.append(self.bye)
       return self.bye
 
-  def Search(self, random_pairings=False) -> Pairings:
+  def MakePairings(self, random_pairings=False) -> Pairings:
+    """Make pairings — random in cycle 1, else TSP optimized."""
     if random_pairings:
       print('Random pairings')
       pairings = self.RandomPairings()
@@ -251,7 +255,7 @@ def Main():
   sheet = sheet_manager.SheetManager(FLAGS.set_code, FLAGS.cycle)
   pairer = Pairer(sheet.GetPlayers())
   pairer.GiveBye()
-  pairings = pairer.Search(random_pairings=FLAGS.cycle in (1,))
+  pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
   PrintPairings(pairings, pairer.lcm)
   try:
     os.mkdir('pairings')
