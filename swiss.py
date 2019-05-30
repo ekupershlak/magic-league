@@ -112,7 +112,7 @@ def PrintPairings(pairings, stream=sys.stdout):
       print(line)
     print()
     loss = SSE(pairings)
-    print(f'Loss: {loss!s}')
+    print(f'Sum of squared error: {loss!s}')
     rmse = math.sqrt(SSE(pairings) / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
 
@@ -153,7 +153,9 @@ class Pairer(object):
       print('Random pairings')
       pairings = self.RandomPairings()
     else:
+      print('Optimizing pairings')
       pairings = self.TravellingSalesPairings()
+      print('Searching for final augmenting swaps.')
       pairings = SplitAll(pairings)
     if self.bye:
       pairings.append((self.bye, BYE))
