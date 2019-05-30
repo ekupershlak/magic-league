@@ -33,6 +33,16 @@ create a Google Cloud service account and populate `credentials.json`.
     sharing interface. Share with the email address found in `credentials.json`
     under `client_email`.
 
+## Run
+
+The most common invocation:
+
+```
+python swiss.py <set code> <cycle number> -w
+```
+
+or `--help` for all the options.
+
 ## Template League Spreadsheet
 
 The locations to read past pairings and post new pairings are hard-coded in
