@@ -1,6 +1,6 @@
 # magic-league
 
-Super-Swiss pairing algorithm for casual Magic: The Gathering leagues
+A Super-Swiss pairing algorithm for casual Magic: The Gathering leagues.
 
 At my workplace, we have a recurring Magic: the Gathering sealed league. A
 problem we faced was that people needed flexibility to play varying numbers of
