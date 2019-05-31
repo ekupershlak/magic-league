@@ -3,7 +3,6 @@
 
 import datetime
 import fractions
-import importlib
 import itertools
 import pickle
 import random
@@ -27,7 +26,11 @@ class SheetManager(object):
   def __init__(self, set_code, cycle):
     self.set_code = set_code
     self.cycle = cycle
-    self.sheet = password.gc.open(f'magic-ny {self.set_code} Sealed League')
+    self._ConnectToSheet()
+
+  def _ConnectToSheet(self):
+    self.sheet = password.GetGc().open(
+        f'magic-ny {self.set_code} Sealed League')
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()
@@ -38,8 +41,7 @@ class SheetManager(object):
     """Write the pairings to the sheet."""
     # Some aspect of the connection to the spreadsheet can go stale. Reload it
     # just before writing to make sure it's fresh.
-    global password
-    password = importlib.reload(password)  # pylint: disable=redefined-outer-name
+    self._ConnectToSheet()
 
     ws_name = 'Cycle ' + str(self.cycle)
     output = self.sheet.worksheet(ws_name)
