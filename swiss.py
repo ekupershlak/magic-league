@@ -2,14 +2,18 @@
 """Solver for swiss pairings."""
 
 import argparse
+import concurrent.futures
 import contextlib
 import enum
 import fractions
 import itertools
 import math
 import os
+import queue
 import random
 import sys
+import threading
+
 from typing import List, Optional, Tuple
 
 import blitzstein_diaconis
@@ -42,6 +46,7 @@ BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = 1 << 20
 FLAGS = None  # Parsing the flags needs to happen in main.
 HUB_COST = 1
+MAX_PROCESSES = 6
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
@@ -98,8 +103,9 @@ def SplitAll(pairings: Pairings) -> Pairings:
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(
-      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
+  my_pairings = sorted(pairings,
+                       key=lambda t: (t[0].score, t[1].score, t),
+                       reverse=True)
   with contextlib.redirect_stdout(stream):
     for (p, q) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
@@ -222,29 +228,60 @@ class Pairer(object):
           assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
 
     pairings = []
-    expected_matches = sum(p.requested_matches for p in self.players) // 2
-    while len(pairings) < expected_matches:
-      pairings = []
-      tour = elkai.solve_int_matrix(weights)
-      for out, in_ in zip(tour, tour[1:] + [tour[0]]):
-        p, ptype = tsp_nodes[out]
-        q, qtype = tsp_nodes[in_]
-        if (ptype, qtype) in (
-            (NodeType.DOUBLE, NodeType.DOUBLE),
-            (NodeType.SINGLE, NodeType.SINGLE),
-            (NodeType.SINGLE, NodeType.DOUBLE),
-            (NodeType.DOUBLE, NodeType.SINGLE),
-        ):
-          if (p, q) in pairings or (q, p) in pairings:
-            weights[out, in_] = EFFECTIVE_INFINITY
-            weights[in_, out] = EFFECTIVE_INFINITY
-            o = tsp_nodes[out]
-            i = tsp_nodes[in_]
-            print(f'Nixing repeat match: {i[0].id}–{o[0].id}.')
-            break
-          else:
-            pairings.append((p, q))
-    return pairings
+    pri_q = queue.PriorityQueue()
+    semaphore = threading.BoundedSemaphore(MAX_PROCESSES)
+
+    def AfterSolve(future):
+      w, tour = future.result()
+      semaphore.release()
+      for s in TourSuccessors(tour, tsp_nodes):
+        pri_q.put(s + (w,))
+
+    tour = elkai.solve_int_matrix(weights)
+    for s in TourSuccessors(tour, tsp_nodes):
+      pri_q.put(s + (weights,))
+    with concurrent.futures.ProcessPoolExecutor(MAX_PROCESSES) as pool:
+      while True:
+        num_dupes, edge_to_remove, pairings, weights = pri_q.get()
+        print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings...')
+        if not edge_to_remove:
+          pool.shutdown(wait=False)
+          return pairings
+        out, in_ = edge_to_remove
+        weights = weights.copy()
+        weights[out, in_] = EFFECTIVE_INFINITY
+        weights[in_, out] = EFFECTIVE_INFINITY
+        semaphore.acquire()
+        future = pool.submit(SolveWeights, weights)
+        future.add_done_callback(AfterSolve)
+
+
+def TourSuccessors(tour: List[int], tsp_nodes):
+  pairings = []
+  edges_to_remove = []
+  for out, in_ in zip(tour, tour[1:] + [tour[0]]):
+    p, ptype = tsp_nodes[out]
+    q, qtype = tsp_nodes[in_]
+    if (ptype, qtype) in (
+        (NodeType.DOUBLE, NodeType.DOUBLE),
+        (NodeType.SINGLE, NodeType.SINGLE),
+        (NodeType.SINGLE, NodeType.DOUBLE),
+        (NodeType.DOUBLE, NodeType.SINGLE),
+    ):
+      if (p, q) in pairings or (q, p) in pairings:
+        edges_to_remove.append((out, in_))
+      else:
+        pairings.append((p, q))
+  if not edges_to_remove:
+    yield (0, None, pairings)
+    return
+  else:
+    for edge in edges_to_remove:
+      yield (len(edges_to_remove), edge, pairings)
+
+
+def SolveWeights(weights):
+  return weights, elkai.solve_int_matrix(weights)
 
 
 def Main():
