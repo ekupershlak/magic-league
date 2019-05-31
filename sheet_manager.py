@@ -26,7 +26,7 @@ class SheetManager(object):
   def __init__(self, set_code, cycle):
     self.set_code = set_code
     self.cycle = cycle
-    self._ConnectToSheet()
+    self.sheet = None
 
   def _ConnectToSheet(self):
     self.sheet = password.GetGc().open(
@@ -54,22 +54,21 @@ class SheetManager(object):
     output.update_acell('I1', CycleDeadline())
     output.update_cells(pairings_range)
 
-  def _FetchFromCache(self, from_cache=True):
+  def _FetchFromCache(self):
     """Fetches data from local file, falling back to the spreadsheet."""
 
     filename = f'{self.set_code}-{self.cycle}'
-    if from_cache:
-      try:
-        return pickle.load(open(filename, 'rb'))
-      except (IOError, EOFError):
-        pass
+    try:
+      return pickle.load(open(filename, 'rb'))
+    except (IOError, EOFError):
+      pass
     player_list = self._FetchFromSheet()
     pickle.dump(player_list, open(filename, 'wb'))
     return player_list
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
-
+    self._ConnectToSheet()
     standings = self.sheet.worksheet('Standings')
     names = list(standings.col_values(1)[1:])
     ids = list(standings.col_values(2)[1:])
