@@ -192,7 +192,7 @@ class Pairer(object):
   def TravellingSalesPairings(self):
     """Compute optimal pairings with a travelling-salesman solver."""
     odd_players = list(p for p in self.players if Odd(p.requested_matches))
-    # random.shuffle(odd_players)
+    random.shuffle(odd_players)
     assert Even(len(odd_players))
 
     counter = itertools.count()
