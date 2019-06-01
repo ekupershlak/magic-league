@@ -13,6 +13,7 @@ import queue
 import random
 import sys
 import threading
+import time
 
 from typing import List, Optional, Tuple
 
@@ -309,8 +310,9 @@ def Main():
     os.mkdir('pairings')
   except FileExistsError:
     pass
-  with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
-            'w') as output:
+  with open(
+      f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.{int(time.time())}.txt',
+      'w') as output:
     PrintPairings(pairings, stream=output)
 
   if FLAGS.write:
