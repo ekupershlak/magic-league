@@ -43,7 +43,7 @@ flags.add_argument(
 )
 
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
-EFFECTIVE_INFINITY = 1 << 20
+EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = None  # Parsing the flags needs to happen in main.
 HUB_COST = 1
 MAX_PROCESSES = 6
