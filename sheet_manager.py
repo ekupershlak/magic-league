@@ -3,7 +3,6 @@
 
 import datetime
 import fractions
-import importlib
 import itertools
 import pickle
 import random
@@ -27,7 +26,11 @@ class SheetManager(object):
   def __init__(self, set_code, cycle):
     self.set_code = set_code
     self.cycle = cycle
-    self.sheet = password.gc.open(f'magic-ny {self.set_code} Sealed League')
+    self.sheet = None
+
+  def _ConnectToSheet(self):
+    self.sheet = password.GetGc().open(
+        f'magic-ny {self.set_code} Sealed League')
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()
@@ -38,8 +41,7 @@ class SheetManager(object):
     """Write the pairings to the sheet."""
     # Some aspect of the connection to the spreadsheet can go stale. Reload it
     # just before writing to make sure it's fresh.
-    global password
-    password = importlib.reload(password)  # pylint: disable=redefined-outer-name
+    self._ConnectToSheet()
 
     ws_name = 'Cycle ' + str(self.cycle)
     output = self.sheet.worksheet(ws_name)
@@ -52,22 +54,21 @@ class SheetManager(object):
     output.update_acell('I1', CycleDeadline())
     output.update_cells(pairings_range)
 
-  def _FetchFromCache(self, from_cache=True):
+  def _FetchFromCache(self):
     """Fetches data from local file, falling back to the spreadsheet."""
 
     filename = f'{self.set_code}-{self.cycle}'
-    if from_cache:
-      try:
-        return pickle.load(open(filename, 'rb'))
-      except (IOError, EOFError):
-        pass
+    try:
+      return pickle.load(open(filename, 'rb'))
+    except (IOError, EOFError):
+      pass
     player_list = self._FetchFromSheet()
     pickle.dump(player_list, open(filename, 'wb'))
     return player_list
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
-
+    self._ConnectToSheet()
     standings = self.sheet.worksheet('Standings')
     names = list(standings.col_values(1)[1:])
     ids = list(standings.col_values(2)[1:])

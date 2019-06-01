@@ -8,6 +8,8 @@ scope = [
     'https://www.googleapis.com/auth/drive',
 ]
 
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    'credentials.json', scope)
-gc = gspread.authorize(credentials)
+
+def GetGc():
+  credentials = ServiceAccountCredentials.from_json_keyfile_name(
+      'credentials.json', scope)
+  return gspread.authorize(credentials)
