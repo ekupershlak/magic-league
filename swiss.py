@@ -47,7 +47,7 @@ EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = None  # Parsing the flags needs to happen in main.
 HUB_COST = 1
 MAX_PROCESSES = 6
-
+MAX_LCM = 10080  # 2 × 7!
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
 
@@ -204,6 +204,7 @@ class Pairer(object):
 
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
+    my_lcm = min(MAX_LCM, self.lcm)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
@@ -217,8 +218,7 @@ class Pairer(object):
           if p == q or p.id in q.opponents or q.id in p.opponents:
             weights[i, j] = EFFECTIVE_INFINITY
           else:
-            weights[i, j] = (int(p.score * self.lcm) -
-                             int(q.score * self.lcm))**2
+            weights[i, j] = (int(p.score * my_lcm) - int(q.score * my_lcm))**2
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
@@ -229,7 +229,7 @@ class Pairer(object):
                                 (NodeType.DOUBLE, NodeType.HUB)):
           weights[i, j] = EFFECTIVE_INFINITY
         elif (ptype, qtype) == (NodeType.HUB, NodeType.HUB):
-          weights[i, j] = (HUB_COST * self.lcm)**2
+          weights[i, j] = (HUB_COST * my_lcm)**2
         else:
           assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
 
