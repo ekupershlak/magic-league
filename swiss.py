@@ -252,13 +252,15 @@ class Pairer(object):
     tour = elkai.solve_int_matrix(weights)
     for s in TourSuccessors(tour, tsp_nodes):
       pri_q.put(s + (weights,))
+    spinner = itertools.cycle(['/', '—', '\\', '|'])
     with concurrent.futures.ProcessPoolExecutor(MAX_PROCESSES) as pool:
       while True:
         try:
           num_dupes, edge_to_remove, pairings, weights = pri_q.get()
         except ValueError:
           continue
-        print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings...')
+        print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings... '
+              f'{next(spinner)}')
         if not edge_to_remove:
           pool.shutdown(wait=False)
           return pairings
