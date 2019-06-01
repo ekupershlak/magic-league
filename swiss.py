@@ -69,22 +69,28 @@ def SSE(pairings):
   return sum((p.score - q.score)**2 for (p, q) in pairings)
 
 
+def ValidatePairings(pairings: Pairings) -> bool:
+  if len(set(tuple(sorted(match)) for match in pairings)) < len(pairings):
+    # Duplicate matches
+    return False
+  for p, q in pairings:
+    if p == q or p.id in q.opponents or q.id in p.opponents:
+      return False
+  return True
+
+
 def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
   """Split the pairings loop into two loops at the best crossover point."""
   best_split = (pairings, [])
   best_loss = SSE(pairings)
   for i in range(len(pairings)):
     for j in range(i, len(pairings)):
-      # First check if the swap is valid.
-      if (pairings[i][0].id in pairings[j][1].opponents or
-          pairings[j][0].id in pairings[i][1].opponents or
-          pairings[i][1].id in pairings[j][0].opponents or
-          pairings[j][1].id in pairings[i][0].opponents):
-        continue
       left = pairings[j + 1:] + pairings[:i]
       right = pairings[i + 1:j]
       left.append((pairings[i][0], pairings[j][1]))
       right.append((pairings[j][0], pairings[i][1]))
+      if not ValidatePairings(left + right):
+        continue
       if SSE(left + right) < best_loss:
         best_loss = SSE(left + right)
         best_split = (left, right)
