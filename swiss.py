@@ -243,14 +243,20 @@ class Pairer(object):
       w, tour = future.result()
       semaphore.release()
       for s in TourSuccessors(tour, tsp_nodes):
-        pri_q.put(s + (w,))
+        try:
+          pri_q.put(s + (w,))
+        except ValueError:
+          pass
 
     tour = elkai.solve_int_matrix(weights)
     for s in TourSuccessors(tour, tsp_nodes):
       pri_q.put(s + (weights,))
     with concurrent.futures.ProcessPoolExecutor(MAX_PROCESSES) as pool:
       while True:
-        num_dupes, edge_to_remove, pairings, weights = pri_q.get()
+        try:
+          num_dupes, edge_to_remove, pairings, weights = pri_q.get()
+        except ValueError:
+          continue
         print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings...')
         if not edge_to_remove:
           pool.shutdown(wait=False)
