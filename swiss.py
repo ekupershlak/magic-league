@@ -8,6 +8,7 @@ import enum
 import fractions
 import itertools
 import math
+import multiprocessing
 import os
 import queue
 import random
@@ -47,7 +48,7 @@ BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = None  # Parsing the flags needs to happen in main.
 HUB_COST = 1
-MAX_PROCESSES = None
+MAX_PROCESSES = multiprocessing.cpu_count()
 MAX_LCM = 10080  # 2 × 7!
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
