@@ -111,9 +111,8 @@ def SplitAll(pairings: Pairings) -> Pairings:
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(pairings,
-                       key=lambda t: (t[0].score, t[1].score, t),
-                       reverse=True)
+  my_pairings = sorted(
+      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   with contextlib.redirect_stdout(stream):
     for (p, q) in my_pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
@@ -127,7 +126,7 @@ def PrintPairings(pairings, stream=sys.stdout):
     print()
     loss = SSE(pairings)
     approx_loss = loss.limit_denominator(1000)
-    approx_string = "Approx. " if approx_loss != loss else ""
+    approx_string = 'Approx. ' if approx_loss != loss else ''
     print(f'Sum of squared error: {approx_string}{approx_loss!s}')
     rmse = math.sqrt(SSE(pairings) / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
