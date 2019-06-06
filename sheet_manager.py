@@ -74,14 +74,13 @@ class SheetManager(object):
     ids = list(standings.col_values(2)[1:])
     wins = [int(n) for n in standings.col_values(4)[1:]]
     losses = [int(n) for n in standings.col_values(5)[1:]]
-    draws = [int(n) for n in standings.col_values(6)[1:]]
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
 
     scores = [
-        fractions.Fraction(2 * w + d, 2 * (w + l + d)) if w + l +
-        d else fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)
+        fractions.Fraction(w, (w + l)) if w + l else fractions.Fraction(1, 2)
+        for w, l in zip(wins, losses)
     ]
 
     previous_pairings = set()
