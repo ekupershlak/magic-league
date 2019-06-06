@@ -2,6 +2,7 @@
 """Solver for swiss pairings."""
 
 import argparse
+import collections
 import concurrent.futures
 import contextlib
 import enum
@@ -71,14 +72,27 @@ def SSE(pairings):
   return sum((p.score - q.score)**2 for (p, q) in pairings)
 
 
-def ValidatePairings(pairings: Pairings) -> bool:
+def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
+  """Raises an error if the pairings aren't valid."""
+  if n is not None and len(pairings) != n:
+    raise WrongNumberOfMatchesError(
+        f'There are {len(pairings)} matches, but {n} were expected.')
   if len(set(tuple(sorted(match)) for match in pairings)) < len(pairings):
     # Duplicate matches
-    return False
+    matches = collections.Counter(tuple(sorted(match)) for match in pairings)
+    dupes = []
+    while matches:
+      match, multiplicity = matches.most_common(1)[0]
+      if multiplicity > 1:
+        dupes.append(f'({match[0].id}, {match[1].id})')
+        matches.pop(match)
+      else:
+        break
+    if dupes:
+      raise DuplicateMatchError(' '.join(dupes))
   for p, q in pairings:
     if p == q or p.id in q.opponents or q.id in p.opponents:
-      return False
-  return True
+      raise RepeatMatchError(f'{p.id}, {q.id}')
 
 
 def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
@@ -91,7 +105,9 @@ def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
       right = pairings[i + 1:j]
       left.append((pairings[i][0], pairings[j][1]))
       right.append((pairings[j][0], pairings[i][1]))
-      if not ValidatePairings(left + right):
+      try:
+        ValidatePairings(left + right)
+      except Error:
         continue
       if SSE(left + right) < best_loss:
         best_loss = SSE(left + right)
@@ -149,6 +165,11 @@ class Pairer(object):
     for d in set(p.score.denominator for p in self.players):
       self.lcm = Lcm(self.lcm, d)
 
+  @property
+  def correct_num_matches(self):
+    """Returns the number of non-BYE matches that there *should* be."""
+    return sum(player.requested_matches for player in self.players) // 2
+
   def GiveBye(self) -> Optional[player_lib.Player]:
     """Give a player a bye and return that player."""
     if Odd(sum(p.requested_matches for p in self.players)):
@@ -170,10 +191,13 @@ class Pairer(object):
     else:
       print('Optimizing pairings')
       pairings = self.TravellingSalesPairings()
+      ValidatePairings(pairings, n=self.correct_num_matches)
       print('Searching for final augmenting swaps.')
       pairings = SplitAll(pairings)
+    ValidatePairings(pairings, n=self.correct_num_matches)
     if self.bye:
       pairings.append((self.bye, BYE))
+      ValidatePairings(pairings, n=self.correct_num_matches + 1)
     return pairings
 
   def RandomPairings(self) -> Pairings:
@@ -274,6 +298,7 @@ class Pairer(object):
 
 
 def TourSuccessors(tour: List[int], tsp_nodes):
+  """Yield pairings and nominate one dupe-match edge to be removed."""
   pairings = []
   edges_to_remove = []
   for out, in_ in zip(tour, tour[1:] + [tour[0]]):
@@ -291,7 +316,6 @@ def TourSuccessors(tour: List[int], tsp_nodes):
         pairings.append((p, q))
   if not edges_to_remove:
     yield (0, None, pairings)
-    return
   else:
     for edge in edges_to_remove:
       yield (len(edges_to_remove), edge, pairings)
@@ -319,6 +343,22 @@ def Main():
 
   if FLAGS.write:
     sheet.Writeback(sorted(pairings))
+
+
+class Error(Exception):
+  pass
+
+
+class DuplicateMatchError(Error):
+  """The same match-up appears twice in this set of pairings."""
+
+
+class RepeatMatchError(Error):
+  """A match-up from a previous round appears in this set of pairings."""
+
+
+class WrongNumberOfMatchesError(Error):
+  """This set of pairings has the wrong number of matches."""
 
 
 if __name__ == '__main__':
