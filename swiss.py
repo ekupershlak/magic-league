@@ -340,6 +340,9 @@ def Main():
       f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.{int(time.time())}.txt',
       'w') as output:
     PrintPairings(pairings, stream=output)
+  with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
+            'w') as output:
+    PrintPairings(pairings, stream=output)
 
   if FLAGS.write:
     sheet.Writeback(sorted(pairings))
