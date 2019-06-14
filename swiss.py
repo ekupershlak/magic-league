@@ -311,8 +311,11 @@ def Main():
   sheet = sheet_manager.SheetManager(FLAGS.set_code, FLAGS.cycle)
   pairer = Pairer(sheet.GetPlayers())
   pairer.GiveBye()
+  start = time.time()
   pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
   PrintPairings(pairings)
+  t = time.time() - start
+  print(f'Finished in {t // 60}m{t % 60:.2f}s wall time.')
   try:
     os.mkdir('pairings')
   except FileExistsError:
