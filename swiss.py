@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*- python3
 """Solver for swiss pairings."""
 
-import argparse
 import collections
 import concurrent.futures
 import contextlib
@@ -21,36 +20,18 @@ from typing import List, Optional, Tuple
 
 import blitzstein_diaconis
 import elkai
+import flags
 import numpy as np
 import player as player_lib
 import sheet_manager
 
-flags = argparse.ArgumentParser(description='Calculate multi-swiss pairings.')
-flags.add_argument(
-    'set_code',
-    metavar='XYZ',
-    type=str,
-    help='the set code for the pairings spreadsheet',
-)
-flags.add_argument(
-    'cycle',
-    metavar='n',
-    type=int,
-    help='the cycle number to pair',
-)
-flags.add_argument(
-    '-w',
-    '--write',
-    action='store_true',
-    help='whether to write the pairings to the spreadsheet',
-)
-
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
-FLAGS = None  # Parsing the flags needs to happen in main.
+FLAGS = flags.FLAGS
 HUB_COST = 1
-MAX_PROCESSES = multiprocessing.cpu_count()
 MAX_LCM = 10080  # 2 × 7!
+MAX_PROCESSES = multiprocessing.cpu_count()
+
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
 
@@ -365,5 +346,4 @@ class WrongNumberOfMatchesError(Error):
 
 
 if __name__ == '__main__':
-  FLAGS = flags.parse_args(sys.argv[1:])
   Main()

@@ -4,9 +4,11 @@
 import datetime
 import fractions
 import itertools
+import os
 import pickle
 import random
 
+import flags
 import password
 import player as player_lib
 
@@ -58,10 +60,15 @@ class SheetManager(object):
     """Fetches data from local file, falling back to the spreadsheet."""
 
     filename = f'{self.set_code}-{self.cycle}'
-    try:
-      return pickle.load(open(filename, 'rb'))
-    except (IOError, EOFError):
-      pass
+    mtime = datetime.datetime.fromtimestamp(os.stat('DOM-4').st_mtime)
+    age = datetime.datetime.now() - mtime
+    if age < datetime.timedelta(minutes=20) and not flags.FLAGS.fetch:
+      try:
+        player_list = pickle.load(open(filename, 'rb'))
+        print('Loaded previous results from cache')
+        return player_list
+      except (IOError, EOFError):
+        pass
     player_list = self._FetchFromSheet()
     pickle.dump(player_list, open(filename, 'wb'))
     return player_list
@@ -96,4 +103,5 @@ class SheetManager(object):
       name = vitals[0]
       opponent_ids = frozenset(b for (a, b) in previous_pairings if name == a)
       player_list.append(player_lib.Player(*(vitals + (opponent_ids,))))
+    print('Fetched previous results from sheet')
     return player_list
