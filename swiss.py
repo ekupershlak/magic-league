@@ -315,7 +315,6 @@ def Main():
   pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
   PrintPairings(pairings)
   t = time.time() - start
-  print(f'Finished in {t // 60:d}m{t % 60:.1f}s wall time.')
   try:
     os.mkdir('pairings')
   except FileExistsError:
@@ -327,6 +326,7 @@ def Main():
   with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
             'w') as output:
     PrintPairings(pairings, stream=output)
+  print(f'Finished in {t // 60:d}m{t % 60:.1f}s wall time.')
 
   if FLAGS.write:
     sheet.Writeback(sorted(pairings))
