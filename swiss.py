@@ -183,11 +183,11 @@ class Pairer(object):
 
   def RandomPairings(self) -> Pairings:
     """Generate and return random pairings."""
-    degree_sequence = sorted(p.requested_matches for p in self.players)
+    degree_sequence = [p.requested_matches for p in self.players]
     edge_set = blitzstein_diaconis.ImportanceSampledBlitzsteinDiaconis(
         degree_sequence)
     pairings = []
-    players_by_index = dict(zip(itertools.count(), self.players))
+    players_by_index = dict(enumerate(self.players))
     for (i, j) in edge_set:
       pairings.append((players_by_index[i], players_by_index[j]))
 
