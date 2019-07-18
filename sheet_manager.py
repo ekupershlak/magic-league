@@ -60,15 +60,15 @@ class SheetManager(object):
     """Fetches data from local file, falling back to the spreadsheet."""
 
     filename = f'{self.set_code}-{self.cycle}'
-    mtime = datetime.datetime.fromtimestamp(os.stat('DOM-4').st_mtime)
-    age = datetime.datetime.now() - mtime
-    if age < datetime.timedelta(minutes=20) and not flags.FLAGS.fetch:
-      try:
+    try:
+      mtime = datetime.datetime.fromtimestamp(os.stat(filename).st_mtime)
+      age = datetime.datetime.now() - mtime
+      if age < datetime.timedelta(minutes=20) and not flags.FLAGS.fetch:
         player_list = pickle.load(open(filename, 'rb'))
         print('Loaded previous results from cache')
         return player_list
-      except (IOError, EOFError):
-        pass
+    except (IOError, EOFError, FileNotFoundError):
+      pass
     player_list = self._FetchFromSheet()
     pickle.dump(player_list, open(filename, 'wb'))
     return player_list
