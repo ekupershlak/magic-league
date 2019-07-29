@@ -349,4 +349,5 @@ class WrongNumberOfMatchesError(Error):
 
 
 if __name__ == '__main__':
+  flags.Init()
   Main()

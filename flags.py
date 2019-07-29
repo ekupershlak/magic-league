@@ -27,4 +27,9 @@ flags.add_argument(
     action='store_true',
     help='force a fetch from the sheet, overriding the 20 minute cache timeout',
 )
-FLAGS = flags.parse_args(sys.argv[1:])
+
+FLAGS = {}
+
+
+def Init():
+  FLAGS.update(flags.parse_args(sys.argv[1:]))
