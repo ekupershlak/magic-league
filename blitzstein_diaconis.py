@@ -72,8 +72,9 @@ def BlitzsteinDiaconis(d) -> Tuple[fractions.Fraction, Graph]:
     ValueError: if d is not graphical
   """
   d = d[:]
-  equivalence_class_size = 1
-  likelihood = fractions.Fraction(1)
+  # During the generation process, compute c(Y) and σ(Y) as per §8.2.
+  equivalence_class_size = 1  # c(Y)
+  likelihood = fractions.Fraction(1)  # σ(Y)
   # 1. Let E be an empty list of edges.
   e = set()
   if not Graphical(d):
@@ -102,6 +103,7 @@ def BlitzsteinDiaconis(d) -> Tuple[fractions.Fraction, Graph]:
       d = ArrayDecrement((i, selection), d)
       assert Graphical(d)
     # 8. Return to step 2.
+
   # print(f'c(Y) = {equivalence_class_size}')
   # print(f'σ(Y) = {likelihood}')
   return e, likelihood * equivalence_class_size

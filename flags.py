@@ -28,8 +28,9 @@ flags.add_argument(
     help='force a fetch from the sheet, overriding the 20 minute cache timeout',
 )
 
-FLAGS = {}
+FLAGS = argparse.Namespace()
 
 
 def Init():
-  FLAGS.update(flags.parse_args(sys.argv[1:]))
+  global FLAGS
+  FLAGS = flags.parse_args(sys.argv[1:])

@@ -27,6 +27,7 @@ import sheet_manager
 
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
+global FLAGS
 FLAGS = flags.FLAGS
 HUB_COST = 1
 MAX_LCM = 10080  # 2 × 7!
@@ -350,4 +351,5 @@ class WrongNumberOfMatchesError(Error):
 
 if __name__ == '__main__':
   flags.Init()
+  FLAGS = flags.FLAGS
   Main()
