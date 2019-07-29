@@ -18,8 +18,11 @@ THURSDAY = 3
 def CycleDeadline():
   today = datetime.date.today()
   weekday = today.weekday()
-  deadline = today + datetime.timedelta(days=14 - weekday + THURSDAY)
-  return deadline.strftime('%B %d')
+  cycle_length = (THURSDAY - weekday) % 7 + 7
+  if cycle_length < 10:
+    cycle_length += 7
+  deadline = today + datetime.timedelta(days=cycle_length)
+  return deadline
 
 
 class SheetManager(object):
@@ -53,7 +56,7 @@ class SheetManager(object):
     for cell, player in zip(pairings_range, flattened_pairings):
       cell.value = player.name
     print('Writing to', ws_name)
-    output.update_acell('I1', CycleDeadline())
+    output.update_acell('I1', CycleDeadline().strftime('%B %d'))
     output.update_cells(pairings_range)
 
   def _FetchFromCache(self):
