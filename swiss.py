@@ -4,6 +4,7 @@
 import collections
 import concurrent.futures
 import contextlib
+import difflib
 import enum
 import fractions
 import itertools
@@ -63,7 +64,18 @@ def SSE(pairings):
 
 
 def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
-  """Raises an error if the pairings aren't valid."""
+  """Raises an error if the pairings aren't valid.
+
+  Args:
+    pairings: The proposed pairings.
+    n: The expected number of pairings.
+
+  Raises:
+    WrongNumberOfMatchesError: There were not `n` matches.
+    DuplicateMatchError: If the proposed pairings contain a duplicate.
+    RepeatMatchError: If the proposed contain a match that occurred in a
+    previous cycle.
+  """
   if n is not None and len(pairings) != n:
     raise WrongNumberOfMatchesError(
         f'There are {len(pairings)} matches, but {n} were expected.')
@@ -117,10 +129,10 @@ def SplitAll(pairings: Pairings) -> Pairings:
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(
+  pairings = sorted(
       pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   with contextlib.redirect_stdout(stream):
-    for (p, q) in my_pairings:
+    for (p, q) in pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
       p_score = f'({p.score})'
       q_score = f'({q.score})'
@@ -150,7 +162,7 @@ class Pairer(object):
   def __init__(self, players: List[player_lib.Player]):
     self.players = players
     self.players_by_id = {player.id: player for player in players}
-    self.bye = None
+    self.byed_player = None
     self.lcm = 1
     for d in set(p.score.denominator for p in self.players):
       self.lcm = Lcm(self.lcm, d)
@@ -161,17 +173,30 @@ class Pairer(object):
     return sum(player.requested_matches for player in self.players) // 2
 
   def GiveBye(self) -> Optional[player_lib.Player]:
-    """Give a player a bye and return that player."""
+    """Select a byed player if one is needed.
+
+    If the total number of requested matches is odd, a bye is needed. Select a
+    random 3-match-requester from among those with the lowest score. Mark that
+    player as byed, decrease their requested matches, and return that player.
+    It does NOT add a match representing the bye to any list of pairings.
+
+    If the total number of requested matches is even, return None.
+
+    Returns:
+      The Player object of the player that got the bye.
+    """
     if Odd(sum(p.requested_matches for p in self.players)):
       eligible_players = [
           p for p in self.players if p.requested_matches == 3
           if BYE.id not in p.opponents
       ]
-      bye = min(eligible_players, key=lambda p: (p.score, random.random()))
-      self.players.remove(bye)
-      self.bye = bye._replace(requested_matches=bye.requested_matches - 1)
-      self.players.append(self.bye)
-      return self.bye
+      byed_player = min(
+          eligible_players, key=lambda p: (p.score, random.random()))
+      self.players.remove(byed_player)
+      self.byed_player = byed_player._replace(
+          requested_matches=byed_player.requested_matches - 1)
+      self.players.append(self.byed_player)
+      return self.byed_player
 
   def MakePairings(self, random_pairings=False) -> Pairings:
     """Make pairings — random in cycle 1, else TSP optimized."""
@@ -181,12 +206,11 @@ class Pairer(object):
     else:
       print('Optimizing pairings')
       pairings = self.TravellingSalesPairings()
-      ValidatePairings(pairings, n=self.correct_num_matches)
       print('Searching for final augmenting swaps.')
       pairings = SplitAll(pairings)
     ValidatePairings(pairings, n=self.correct_num_matches)
-    if self.bye:
-      pairings.append((self.bye, BYE))
+    if self.byed_player:
+      pairings.append((self.byed_player, BYE))
       ValidatePairings(pairings, n=self.correct_num_matches + 1)
     return pairings
 
@@ -199,9 +223,6 @@ class Pairer(object):
     players_by_index = dict(enumerate(self.players))
     for (i, j) in edge_set:
       pairings.append((players_by_index[i], players_by_index[j]))
-
-    if self.bye:
-      pairings.append((self.bye, BYE))
     return pairings
 
   def TravellingSalesPairings(self):
@@ -315,7 +336,49 @@ def SolveWeights(weights):
   return weights, elkai.solve_int_matrix(weights)
 
 
-def Main():
+def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
+  """Sort the given pairings by minimal cost tour."""
+  pairings = pairings[:]
+  random.shuffle(pairings)
+  num_nodes = 2 * len(pairings) + 1
+  weights = np.zeros((num_nodes, num_nodes), dtype=int)
+
+  for alpha in range(len(pairings)):
+    alpha_left = 2 * alpha + 1
+    alpha_right = 2 * alpha + 2
+    weights[alpha_left, alpha_right] = weights[alpha_right, alpha_left] = -1
+    for beta in range(len(pairings)):
+      if beta == alpha:
+        continue
+      beta_left = 2 * beta + 1
+      beta_right = 2 * beta + 2
+      # normal;normal
+      # swapped;swapped
+      weights[alpha_right, beta_left] = weights[alpha_left, beta_right] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta]))
+      # normal;swapped
+      # swapped;normal
+      weights[alpha_right, beta_right] = weights[alpha_left, beta_left] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta][::-1]))
+  _, tour = SolveWeights(weights)
+  output_pairings = []
+  for node in tour[1::2]:
+    next_pairing = pairings[(node - 1) // 2]
+    if node % 2 == 0:
+      next_pairing = next_pairing[::-1]
+    output_pairings.append(next_pairing)
+  return output_pairings
+
+
+def PairingTransitionCost(pairing_alpha, pairing_beta):
+  left_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[0], b=pairing_beta[0]).ratio()
+  right_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[1], b=pairing_beta[1]).ratio()
+  return math.sqrt(left_cost) + math.sqrt(right_cost)
+
+
+def Main(argv):
   """Fetch records from the spreadsheet, generate pairings, write them back."""
   set_code, cycle = argv[1:]
   cycle = int(cycle)
@@ -326,6 +389,8 @@ def Main():
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=cycle in (1,))
   PrintPairings(pairings)
+  ValidatePairings(
+      pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
   t = time.time() - start
   try:
     os.mkdir('pairings')
@@ -339,7 +404,7 @@ def Main():
   print(f'Finished in {int(t // 60)}m{t % 60:.1f}s wall time.')
 
   if FLAGS.write:
-    sheet.Writeback(sorted(pairings))
+    sheet.Writeback(OrderPairingsByTsp(pairings))
 
 
 class Error(Exception):
