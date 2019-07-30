@@ -8,7 +8,7 @@ import os
 import pickle
 import random
 
-import flags
+from absl import flags
 import password
 import player as player_lib
 

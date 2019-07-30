@@ -17,23 +17,31 @@ import threading
 import time
 
 from typing import List, Optional, Tuple
+from absl import app
+from absl import flags
 
 import blitzstein_diaconis
 import elkai
-import flags
 import numpy as np
 import player as player_lib
 import sheet_manager
 
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
-global FLAGS
 FLAGS = flags.FLAGS
 HUB_COST = 1
 MAX_LCM = 10080  # 2 × 7!
 MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
+
+flags.DEFINE_bool(
+    'write', False, 'Write the pairings to the spreadsheet', short_name='w')
+flags.DEFINE_bool(
+    'fetch',
+    False,
+    'Force a fetch from the sheet, overriding the 20 minute cache timeout.',
+    short_name='f')
 
 
 def Odd(n):
@@ -309,23 +317,24 @@ def SolveWeights(weights):
 
 def Main():
   """Fetch records from the spreadsheet, generate pairings, write them back."""
-  sheet = sheet_manager.SheetManager(FLAGS.set_code, FLAGS.cycle)
+  set_code, cycle = argv[1:]
+  cycle = int(cycle)
+
+  sheet = sheet_manager.SheetManager(set_code, cycle)
   pairer = Pairer(sheet.GetPlayers())
   pairer.GiveBye()
   start = time.time()
-  pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
+  pairings = pairer.MakePairings(random_pairings=cycle in (1,))
   PrintPairings(pairings)
   t = time.time() - start
   try:
     os.mkdir('pairings')
   except FileExistsError:
     pass
-  with open(
-      f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.{int(time.time())}.txt',
-      'w') as output:
-    PrintPairings(pairings, stream=output)
-  with open(f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.txt',
+  with open(f'pairings/pairings-{set_code}{cycle}.{int(time.time())}.txt',
             'w') as output:
+    PrintPairings(pairings, stream=output)
+  with open(f'pairings/pairings-{set_code}{cycle}.txt', 'w') as output:
     PrintPairings(pairings, stream=output)
   print(f'Finished in {int(t // 60)}m{t % 60:.1f}s wall time.')
 
@@ -350,6 +359,4 @@ class WrongNumberOfMatchesError(Error):
 
 
 if __name__ == '__main__':
-  flags.Init()
-  FLAGS = flags.FLAGS
-  Main()
+  app.run(Main)
