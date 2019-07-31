@@ -129,8 +129,6 @@ def SplitAll(pairings: Pairings) -> Pairings:
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  pairings = sorted(
-      pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True)
   with contextlib.redirect_stdout(stream):
     for (p, q) in pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
@@ -370,7 +368,12 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
   return output_pairings
 
 
-def PairingTransitionCost(pairing_alpha, pairing_beta):
+def OrderPairingsByScore(pairings: Pairings) -> Pairings:
+  return list(
+      sorted(pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True))
+
+
+def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
   left_cost = 1 - difflib.SequenceMatcher(
       a=pairing_alpha[0], b=pairing_beta[0]).ratio()
   right_cost = 1 - difflib.SequenceMatcher(
