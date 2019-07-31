@@ -339,7 +339,7 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
   pairings = pairings[:]
   random.shuffle(pairings)
   num_nodes = 2 * len(pairings) + 1
-  weights = np.zeros((num_nodes, num_nodes), dtype=int)
+  weights = np.zeros((num_nodes, num_nodes), dtype=float)
 
   for alpha in range(len(pairings)):
     alpha_left = 2 * alpha + 1
@@ -358,7 +358,7 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
       # swapped;normal
       weights[alpha_right, beta_right] = weights[alpha_left, beta_left] = (
           PairingTransitionCost(pairings[alpha], pairings[beta][::-1]))
-  _, tour = SolveWeights(weights)
+  tour = elkai.solve_float_matrix(weights)
   output_pairings = []
   for node in tour[1::2]:
     next_pairing = pairings[(node - 1) // 2]
@@ -378,7 +378,7 @@ def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
       a=pairing_alpha[0], b=pairing_beta[0]).ratio()
   right_cost = 1 - difflib.SequenceMatcher(
       a=pairing_alpha[1], b=pairing_beta[1]).ratio()
-  return math.sqrt(left_cost) + math.sqrt(right_cost)
+  return left_cost + right_cost
 
 
 def Main(argv):
