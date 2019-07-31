@@ -97,36 +97,6 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
       raise RepeatMatchError(f'{p.id}, {q.id}')
 
 
-def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
-  """Split the pairings loop into two loops at the best crossover point."""
-  best_split = (pairings, [])
-  best_loss = SSE(pairings)
-  for i in range(len(pairings)):
-    for j in range(i, len(pairings)):
-      left = pairings[j + 1:] + pairings[:i]
-      right = pairings[i + 1:j]
-      left.append((pairings[i][0], pairings[j][1]))
-      right.append((pairings[j][0], pairings[i][1]))
-      try:
-        ValidatePairings(left + right)
-      except Error:
-        continue
-      if SSE(left + right) < best_loss:
-        best_loss = SSE(left + right)
-        best_split = (left, right)
-  if best_split[1]:
-    print(f'Found a split that improves loss by {SSE(pairings) - best_loss}.')
-  return best_split
-
-
-def SplitAll(pairings: Pairings) -> Pairings:
-  """Recursively split the pairings as long as improvements are found."""
-  left, right = SplitOnce(pairings)
-  if left == pairings:
-    return left
-  return SplitAll(left) + SplitAll(right)
-
-
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
   with contextlib.redirect_stdout(stream):
@@ -204,8 +174,6 @@ class Pairer(object):
     else:
       print('Optimizing pairings')
       pairings = self.TravellingSalesPairings()
-      print('Searching for final augmenting swaps.')
-      pairings = SplitAll(pairings)
     ValidatePairings(pairings, n=self.correct_num_matches)
     if self.byed_player:
       pairings.append((self.byed_player, BYE))
