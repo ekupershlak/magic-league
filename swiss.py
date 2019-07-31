@@ -391,6 +391,7 @@ def Main(argv):
   pairer.GiveBye()
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=cycle in (1,))
+  pairings = OrderPairingsByTsp(pairings)
   PrintPairings(pairings)
   ValidatePairings(
       pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
@@ -407,7 +408,7 @@ def Main(argv):
   print(f'Finished in {int(t // 60)}m{t % 60:.1f}s wall time.')
 
   if FLAGS.write:
-    sheet.Writeback(OrderPairingsByTsp(pairings))
+    sheet.Writeback(pairings)
 
 
 class Error(Exception):
