@@ -103,8 +103,8 @@ class SheetManager(object):
 
     player_list = []
     for vitals in zip(ids, names, scores, requested_matches):
-      name = vitals[0]
-      opponent_ids = frozenset(b for (a, b) in previous_pairings if name == a)
-      player_list.append(player_lib.Player(*(vitals + (opponent_ids,))))
+      id_, name, score, rm = vitals
+      opponent_ids = frozenset(b for (a, b) in previous_pairings if id_ == a)
+      player_list.append(player_lib.Player(id_, name, score, rm, opponent_ids))
     print('Fetched previous results from sheet')
     return player_list
