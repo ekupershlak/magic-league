@@ -13,6 +13,8 @@ Google sheet that is specifically formatted.
 
 ## Setup
 
+**Python 3 is required.**
+
 ### Install prerequisites
 
 ```
@@ -38,7 +40,7 @@ create a Google Cloud service account and populate `credentials.json`.
 The most common invocation:
 
 ```
-python swiss.py <set code> <cycle number> -w
+python3 swiss.py <set code> <cycle number> -w
 ```
 
 or `--help` for all the options.
