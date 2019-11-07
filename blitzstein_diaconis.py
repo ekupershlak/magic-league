@@ -14,6 +14,8 @@ Graph = Collection[Tuple[int, int]]
 def Graphical(d):
   """Whether the given degree sequence is graphical."""
   n = len(d)
+  if sum(d) % 2 == 1:
+    return False
   if any(di < 0 for di in d):
     return False
   d = [di for di in d if di > 0]
