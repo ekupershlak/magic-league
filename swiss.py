@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*- python3
+# python3
 """Solver for swiss pairings."""
 
 import collections

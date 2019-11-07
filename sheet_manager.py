@@ -87,9 +87,8 @@ class SheetManager(object):
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
-
     scores = [
-        fractions.Fraction(w, (w + l)) if w + l else fractions.Fraction(1, 2)
+        fractions.Fraction(w, (w + l))if w + l else fractions.Fraction(1, 2)
         for w, l in zip(wins, losses)
     ]
 
