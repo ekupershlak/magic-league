@@ -4,9 +4,11 @@
 import datetime
 import fractions
 import itertools
+import os
 import pickle
 import random
 
+from absl import flags
 import password
 import player as player_lib
 
@@ -16,8 +18,11 @@ THURSDAY = 3
 def CycleDeadline():
   today = datetime.date.today()
   weekday = today.weekday()
-  deadline = today + datetime.timedelta(days=14 - weekday + THURSDAY)
-  return deadline.strftime('%B %d')
+  cycle_length = (THURSDAY - weekday) % 7 + 7
+  if cycle_length < 10:
+    cycle_length += 7
+  deadline = today + datetime.timedelta(days=cycle_length)
+  return deadline
 
 
 class SheetManager(object):
@@ -51,7 +56,7 @@ class SheetManager(object):
     for cell, player in zip(pairings_range, flattened_pairings):
       cell.value = player.name
     print('Writing to', ws_name)
-    output.update_acell('I1', CycleDeadline())
+    output.update_acell('I1', CycleDeadline().strftime('%B %d'))
     output.update_cells(pairings_range)
 
   def _FetchFromCache(self):
@@ -59,8 +64,13 @@ class SheetManager(object):
 
     filename = f'{self.set_code}-{self.cycle}'
     try:
-      return pickle.load(open(filename, 'rb'))
-    except (IOError, EOFError):
+      mtime = datetime.datetime.fromtimestamp(os.stat(filename).st_mtime)
+      age = datetime.datetime.now() - mtime
+      if age < datetime.timedelta(minutes=20) and not flags.FLAGS.fetch:
+        player_list = pickle.load(open(filename, 'rb'))
+        print('Loaded previous results from cache')
+        return player_list
+    except (IOError, EOFError, FileNotFoundError):
       pass
     player_list = self._FetchFromSheet()
     pickle.dump(player_list, open(filename, 'wb'))
@@ -74,14 +84,13 @@ class SheetManager(object):
     ids = list(standings.col_values(2)[1:])
     wins = [int(n) for n in standings.col_values(4)[1:]]
     losses = [int(n) for n in standings.col_values(5)[1:]]
-    draws = [int(n) for n in standings.col_values(6)[1:]]
     requested_matches = [
         int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
     ]
 
     scores = [
-        fractions.Fraction(2 * w + d, 2 * (w + l + d)) if w + l +
-        d else fractions.Fraction(1, 2) for w, l, d in zip(wins, losses, draws)
+        fractions.Fraction(w, (w + l)) if w + l else fractions.Fraction(1, 2)
+        for w, l in zip(wins, losses)
     ]
 
     previous_pairings = set()
@@ -94,7 +103,8 @@ class SheetManager(object):
 
     player_list = []
     for vitals in zip(ids, names, scores, requested_matches):
-      name = vitals[0]
-      opponent_ids = frozenset(b for (a, b) in previous_pairings if name == a)
-      player_list.append(player_lib.Player(*(vitals + (opponent_ids,))))
+      id_, name, score, rm = vitals
+      opponent_ids = frozenset(b for (a, b) in previous_pairings if id_ == a)
+      player_list.append(player_lib.Player(id_, name, score, rm, opponent_ids))
+    print('Fetched previous results from sheet')
     return player_list

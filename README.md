@@ -13,6 +13,8 @@ Google sheet that is specifically formatted.
 
 ## Setup
 
+**Python 3 is required.**
+
 ### Install prerequisites
 
 ```
@@ -38,15 +40,16 @@ create a Google Cloud service account and populate `credentials.json`.
 The most common invocation:
 
 ```
-python swiss.py <set code> <cycle number> -w
+python3 swiss.py <set code> <cycle number> -w
 ```
 
 or `--help` for all the options.
 
 ## Template League Spreadsheet
 
-The locations to read past pairings and post new pairings are hard-coded in
-`sheet_manager.py`. You can use [this template sheet][1] to track your own
-league, or adapt `sheet_manager` to use ranges appropriate to an existing sheet.
+The cells from which to read past pairings and to which to post new pairings are
+hard-coded in `sheet_manager.py`. You can use [this template sheet][1] to track
+your own league, or adapt `sheet_manager` to use ranges appropriate to an
+existing sheet.
 
 [1]: https://docs.google.com/spreadsheets/d/1wDgi1rTJ3bq7-i91jEPzho4gVGx2SAaKOSALNtz41CA/edit?usp=sharing

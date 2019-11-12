@@ -1,13 +1,15 @@
 # -*- encoding: utf-8 -*- python3
 """Solver for swiss pairings."""
 
-import argparse
+import collections
 import concurrent.futures
 import contextlib
+import difflib
 import enum
 import fractions
 import itertools
 import math
+import multiprocessing
 import os
 import queue
 import random
@@ -16,6 +18,8 @@ import threading
 import time
 
 from typing import List, Optional, Tuple
+from absl import app
+from absl import flags
 
 import blitzstein_diaconis
 import elkai
@@ -23,33 +27,22 @@ import numpy as np
 import player as player_lib
 import sheet_manager
 
-flags = argparse.ArgumentParser(description='Calculate multi-swiss pairings.')
-flags.add_argument(
-    'set_code',
-    metavar='XYZ',
-    type=str,
-    help='the set code for the pairings spreadsheet',
-)
-flags.add_argument(
-    'cycle',
-    metavar='n',
-    type=int,
-    help='the cycle number to pair',
-)
-flags.add_argument(
-    '-w',
-    '--write',
-    action='store_true',
-    help='whether to write the pairings to the spreadsheet',
-)
-
 BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
-FLAGS = None  # Parsing the flags needs to happen in main.
+FLAGS = flags.FLAGS
 HUB_COST = 1
-MAX_PROCESSES = None
 MAX_LCM = 10080  # 2 × 7!
+MAX_PROCESSES = multiprocessing.cpu_count()
+
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
+
+flags.DEFINE_bool(
+    'write', False, 'Write the pairings to the spreadsheet', short_name='w')
+flags.DEFINE_bool(
+    'fetch',
+    False,
+    'Force a fetch from the sheet, overriding the 20 minute cache timeout.',
+    short_name='f')
 
 
 def Odd(n):
@@ -70,51 +63,44 @@ def SSE(pairings):
   return sum((p.score - q.score)**2 for (p, q) in pairings)
 
 
-def ValidatePairings(pairings: Pairings) -> bool:
+def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
+  """Raises an error if the pairings aren't valid.
+
+  Args:
+    pairings: The proposed pairings.
+    n: The expected number of pairings.
+
+  Raises:
+    WrongNumberOfMatchesError: There were not `n` matches.
+    DuplicateMatchError: If the proposed pairings contain a duplicate.
+    RepeatMatchError: If the proposed contain a match that occurred in a
+    previous cycle.
+  """
+  if n is not None and len(pairings) != n:
+    raise WrongNumberOfMatchesError(
+        f'There are {len(pairings)} matches, but {n} were expected.')
   if len(set(tuple(sorted(match)) for match in pairings)) < len(pairings):
     # Duplicate matches
-    return False
+    matches = collections.Counter(tuple(sorted(match)) for match in pairings)
+    dupes = []
+    while matches:
+      match, multiplicity = matches.most_common(1)[0]
+      if multiplicity > 1:
+        dupes.append(f'({match[0].id}, {match[1].id})')
+        matches.pop(match)
+      else:
+        break
+    if dupes:
+      raise DuplicateMatchError(' '.join(dupes))
   for p, q in pairings:
     if p == q or p.id in q.opponents or q.id in p.opponents:
-      return False
-  return True
-
-
-def SplitOnce(pairings: Pairings) -> Tuple[Pairings, Pairings]:
-  """Split the pairings loop into two loops at the best crossover point."""
-  best_split = (pairings, [])
-  best_loss = SSE(pairings)
-  for i in range(len(pairings)):
-    for j in range(i, len(pairings)):
-      left = pairings[j + 1:] + pairings[:i]
-      right = pairings[i + 1:j]
-      left.append((pairings[i][0], pairings[j][1]))
-      right.append((pairings[j][0], pairings[i][1]))
-      if not ValidatePairings(left + right):
-        continue
-      if SSE(left + right) < best_loss:
-        best_loss = SSE(left + right)
-        best_split = (left, right)
-  if best_split[1]:
-    print(f'Found a split that improves loss by {SSE(pairings) - best_loss}.')
-  return best_split
-
-
-def SplitAll(pairings: Pairings) -> Pairings:
-  """Recursively split the pairings as long as improvements are found."""
-  left, right = SplitOnce(pairings)
-  if left == pairings:
-    return left
-  return SplitAll(left) + SplitAll(right)
+      raise RepeatMatchError(f'{p.id}, {q.id}')
 
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
-  my_pairings = sorted(pairings,
-                       key=lambda t: (t[0].score, t[1].score, t),
-                       reverse=True)
   with contextlib.redirect_stdout(stream):
-    for (p, q) in my_pairings:
+    for (p, q) in pairings:
       # 7 + 7 + 28 + 28 + 4 spaces + "vs." (3) = 77
       p_score = f'({p.score})'
       q_score = f'({q.score})'
@@ -126,7 +112,7 @@ def PrintPairings(pairings, stream=sys.stdout):
     print()
     loss = SSE(pairings)
     approx_loss = loss.limit_denominator(1000)
-    approx_string = "Approx. " if approx_loss != loss else ""
+    approx_string = 'Approx. ' if approx_loss != loss else ''
     print(f'Sum of squared error: {approx_string}{approx_loss!s}')
     rmse = math.sqrt(SSE(pairings) / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
@@ -144,23 +130,41 @@ class Pairer(object):
   def __init__(self, players: List[player_lib.Player]):
     self.players = players
     self.players_by_id = {player.id: player for player in players}
-    self.bye = None
+    self.byed_player = None
     self.lcm = 1
     for d in set(p.score.denominator for p in self.players):
       self.lcm = Lcm(self.lcm, d)
 
+  @property
+  def correct_num_matches(self):
+    """Returns the number of non-BYE matches that there *should* be."""
+    return sum(player.requested_matches for player in self.players) // 2
+
   def GiveBye(self) -> Optional[player_lib.Player]:
-    """Give a player a bye and return that player."""
+    """Select a byed player if one is needed.
+
+    If the total number of requested matches is odd, a bye is needed. Select a
+    random 3-match-requester from among those with the lowest score. Mark that
+    player as byed, decrease their requested matches, and return that player.
+    It does NOT add a match representing the bye to any list of pairings.
+
+    If the total number of requested matches is even, return None.
+
+    Returns:
+      The Player object of the player that got the bye.
+    """
     if Odd(sum(p.requested_matches for p in self.players)):
       eligible_players = [
           p for p in self.players if p.requested_matches == 3
           if BYE.id not in p.opponents
       ]
-      bye = min(eligible_players, key=lambda p: (p.score, random.random()))
-      self.players.remove(bye)
-      self.bye = bye._replace(requested_matches=bye.requested_matches - 1)
-      self.players.append(self.bye)
-      return self.bye
+      byed_player = min(
+          eligible_players, key=lambda p: (p.score, random.random()))
+      self.players.remove(byed_player)
+      self.byed_player = byed_player._replace(
+          requested_matches=byed_player.requested_matches - 1)
+      self.players.append(self.byed_player)
+      return self.byed_player
 
   def MakePairings(self, random_pairings=False) -> Pairings:
     """Make pairings — random in cycle 1, else TSP optimized."""
@@ -170,24 +174,21 @@ class Pairer(object):
     else:
       print('Optimizing pairings')
       pairings = self.TravellingSalesPairings()
-      print('Searching for final augmenting swaps.')
-      pairings = SplitAll(pairings)
-    if self.bye:
-      pairings.append((self.bye, BYE))
+    ValidatePairings(pairings, n=self.correct_num_matches)
+    if self.byed_player:
+      pairings.append((self.byed_player, BYE))
+      ValidatePairings(pairings, n=self.correct_num_matches + 1)
     return pairings
 
   def RandomPairings(self) -> Pairings:
     """Generate and return random pairings."""
-    degree_sequence = sorted(p.requested_matches for p in self.players)
+    degree_sequence = [p.requested_matches for p in self.players]
     edge_set = blitzstein_diaconis.ImportanceSampledBlitzsteinDiaconis(
         degree_sequence)
     pairings = []
-    players_by_index = dict(zip(itertools.count(), self.players))
+    players_by_index = dict(enumerate(self.players))
     for (i, j) in edge_set:
       pairings.append((players_by_index[i], players_by_index[j]))
-
-    if self.bye:
-      pairings.append((self.bye, BYE))
     return pairings
 
   def TravellingSalesPairings(self):
@@ -274,6 +275,7 @@ class Pairer(object):
 
 
 def TourSuccessors(tour: List[int], tsp_nodes):
+  """Yield pairings and nominate one dupe-match edge to be removed."""
   pairings = []
   edges_to_remove = []
   for out, in_ in zip(tour, tour[1:] + [tour[0]]):
@@ -291,7 +293,6 @@ def TourSuccessors(tour: List[int], tsp_nodes):
         pairings.append((p, q))
   if not edges_to_remove:
     yield (0, None, pairings)
-    return
   else:
     for edge in edges_to_remove:
       yield (len(edges_to_remove), edge, pairings)
@@ -301,26 +302,98 @@ def SolveWeights(weights):
   return weights, elkai.solve_int_matrix(weights)
 
 
-def Main():
+def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
+  """Sort the given pairings by minimal cost tour."""
+  pairings = pairings[:]
+  random.shuffle(pairings)
+  num_nodes = 2 * len(pairings) + 1
+  weights = np.zeros((num_nodes, num_nodes), dtype=float)
+
+  for alpha in range(len(pairings)):
+    alpha_left = 2 * alpha + 1
+    alpha_right = 2 * alpha + 2
+    weights[alpha_left, alpha_right] = weights[alpha_right, alpha_left] = -1
+    for beta in range(len(pairings)):
+      if beta == alpha:
+        continue
+      beta_left = 2 * beta + 1
+      beta_right = 2 * beta + 2
+      # normal;normal
+      # swapped;swapped
+      weights[alpha_right, beta_left] = weights[alpha_left, beta_right] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta]))
+      # normal;swapped
+      # swapped;normal
+      weights[alpha_right, beta_right] = weights[alpha_left, beta_left] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta][::-1]))
+  tour = elkai.solve_float_matrix(weights)
+  output_pairings = []
+  for node in tour[1::2]:
+    next_pairing = pairings[(node - 1) // 2]
+    if node % 2 == 0:
+      next_pairing = next_pairing[::-1]
+    output_pairings.append(next_pairing)
+  return output_pairings
+
+
+def OrderPairingsByScore(pairings: Pairings) -> Pairings:
+  return list(
+      sorted(pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True))
+
+
+def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
+  left_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[0], b=pairing_beta[0]).ratio()
+  right_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[1], b=pairing_beta[1]).ratio()
+  return left_cost + right_cost
+
+
+def Main(argv):
   """Fetch records from the spreadsheet, generate pairings, write them back."""
-  sheet = sheet_manager.SheetManager(FLAGS.set_code, FLAGS.cycle)
+  set_code, cycle = argv[1:]
+  cycle = int(cycle)
+
+  sheet = sheet_manager.SheetManager(set_code, cycle)
   pairer = Pairer(sheet.GetPlayers())
   pairer.GiveBye()
-  pairings = pairer.MakePairings(random_pairings=FLAGS.cycle in (1,))
+  start = time.time()
+  pairings = pairer.MakePairings(random_pairings=cycle in (1,))
+  pairings = OrderPairingsByTsp(pairings)
   PrintPairings(pairings)
+  ValidatePairings(
+      pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
+  t = time.time() - start
   try:
     os.mkdir('pairings')
   except FileExistsError:
     pass
-  with open(
-      f'pairings/pairings-{FLAGS.set_code}{FLAGS.cycle}.{int(time.time())}.txt',
-      'w') as output:
+  with open(f'pairings/pairings-{set_code}{cycle}.{int(time.time())}.txt',
+            'w') as output:
     PrintPairings(pairings, stream=output)
+  with open(f'pairings/pairings-{set_code}{cycle}.txt', 'w') as output:
+    PrintPairings(pairings, stream=output)
+  print(f'Finished in {int(t // 60)}m{t % 60:.1f}s wall time.')
 
   if FLAGS.write:
-    sheet.Writeback(sorted(pairings))
+    sheet.Writeback(pairings)
+
+
+class Error(Exception):
+  pass
+
+
+class DuplicateMatchError(Error):
+  """The same match-up appears twice in this set of pairings."""
+
+
+class RepeatMatchError(Error):
+  """A match-up from a previous round appears in this set of pairings."""
+
+
+class WrongNumberOfMatchesError(Error):
+  """This set of pairings has the wrong number of matches."""
 
 
 if __name__ == '__main__':
-  FLAGS = flags.parse_args(sys.argv[1:])
-  Main()
+  app.run(Main)
