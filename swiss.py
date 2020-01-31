@@ -222,7 +222,7 @@ class Pairer(object):
           if p == q or p.id in q.opponents or q.id in p.opponents:
             weights[i, j] = EFFECTIVE_INFINITY
           else:
-            weights[i, j] = (int(p.score * my_lcm) - int(q.score * my_lcm))**2
+            weights[i, j] = round((p.score * my_lcm - q.score * my_lcm)**2)
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
