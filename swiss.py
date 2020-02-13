@@ -23,6 +23,7 @@ from absl import flags
 
 import blitzstein_diaconis
 import elkai
+import magic_sets
 import numpy as np
 import player as player_lib
 import sheet_manager
@@ -357,9 +358,18 @@ def Main(argv):
   """Fetch records from the spreadsheet, generate pairings, write them back."""
   set_code, cycle = argv[1:]
   cycle = int(cycle)
-
+  previous_set = list(magic_sets.names.values())[
+      list(zip(*magic_sets.names.items()))[0].find(set_code) - 1]
   sheet = sheet_manager.SheetManager(set_code, cycle)
-  pairer = Pairer(sheet.GetPlayers())
+  sheet_old = sheet_manager.SheetManager(previous_set, 2)
+  players_new = sheet.GetPlayers()
+  players_old = {p.id: p.score for p in sheet_old.GetPlayers()}
+  players = [
+      p._replace(
+          score=(p.score + players_old.get(p.id, fractions.Fraction(1, 2))) / 2)
+      for p in players_new
+  ]
+  pairer = Pairer(players)
   pairer.GiveBye()
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=cycle in (1,))
