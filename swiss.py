@@ -209,6 +209,8 @@ class Pairer(object):
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
     my_lcm = min(MAX_LCM, self.lcm)
+    # Cycle 1: 0.2; 2: 0.1; 3, 4, 5: 0.0
+    perturbation_sigma = max(0, 0.3 - 0.1 * self.cycle)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
@@ -222,7 +224,9 @@ class Pairer(object):
           if p == q or p.id in q.opponents or q.id in p.opponents:
             weights[i, j] = EFFECTIVE_INFINITY
           else:
-            weights[i, j] = (int(p.score * my_lcm) - int(q.score * my_lcm))**2
+            weights[i, j] = round(
+                (my_lcm *
+                 (p.score - q.score + random.gauss(0, perturbation_sigma)))**2)
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
