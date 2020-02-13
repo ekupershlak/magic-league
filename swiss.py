@@ -366,7 +366,8 @@ def Main(argv):
   players_old = {p.id: p.score for p in sheet_old.GetPlayers()}
   players = [
       p._replace(
-          score=(p.score + players_old.get(p.id, fractions.Fraction(1, 2))) / 2)
+          score=(2 * p.score +
+                 players_old.get(p.id, fractions.Fraction(1, 2))) / 3)
       for p in players_new
   ]
   pairer = Pairer(players)
