@@ -34,8 +34,12 @@ class SheetManager(object):
     self.sheet = None
 
   def _ConnectToSheet(self):
-    self.sheet = password.GetGc().open(
-        f'magic-ny {self.set_code} Sealed League')
+    if self.set_code == 'THB':
+      self.sheet = password.GetGc().open(
+          f'magic-ny Theros Beyond Death (THB) Sealed League')
+    else:
+      self.sheet = password.GetGc().open(
+          f'magic-ny {self.set_code} Sealed League')
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()
