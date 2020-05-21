@@ -210,8 +210,8 @@ class Pairer(object):
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
     my_lcm = min(MAX_LCM, self.lcm)
-    # Cycle 1: 0.2; 2: 0.1; 3, 4, 5: 0.0
-    perturbation_sigma = max(0, 0.3 - 0.1 * self.cycle)
+    # Cycle 1: 0.1; 2: 0.05; 3, 4, 5: 0.0
+    perturbation_sigma = max(0, 0.15 - 0.05 * self.cycle)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
