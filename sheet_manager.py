@@ -9,6 +9,7 @@ import pickle
 import random
 
 from absl import flags
+import magic_sets
 import password
 import player as player_lib
 
@@ -34,12 +35,8 @@ class SheetManager(object):
     self.sheet = None
 
   def _ConnectToSheet(self):
-    if self.set_code == 'THB':
-      self.sheet = password.GetGc().open(
-          f'magic-ny Theros Beyond Death (THB) Sealed League')
-    else:
-      self.sheet = password.GetGc().open(
-          f'magic-ny {self.set_code} Sealed League')
+    self.sheet = password.GetGc().open(
+          f'magic-ny {magic_sets.names[self.set_code]} ({self.set_code}) Sealed League')
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()

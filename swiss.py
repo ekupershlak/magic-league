@@ -37,8 +37,10 @@ MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
-flags.DEFINE_bool(
-    'write', False, 'Write the pairings to the spreadsheet', short_name='w')
+flags.DEFINE_bool('write',
+                  False,
+                  'Write the pairings to the spreadsheet',
+                  short_name='w')
 flags.DEFINE_bool(
     'fetch',
     False,
@@ -128,7 +130,8 @@ class NodeType(enum.Enum):
 class Pairer(object):
   """Manages pairing a cycle of a league."""
 
-  def __init__(self, players: List[player_lib.Player]):
+  def __init__(self, players: List[player_lib.Player], sigma=0.0):
+    self.sigma = sigma
     self.players = players
     self.players_by_id = {player.id: player for player in players}
     self.byed_player = None
@@ -159,8 +162,8 @@ class Pairer(object):
           p for p in self.players if p.requested_matches == 3
           if BYE.id not in p.opponents
       ]
-      byed_player = min(
-          eligible_players, key=lambda p: (p.score, random.random()))
+      byed_player = min(eligible_players,
+                        key=lambda p: (p.score, random.random()))
       self.players.remove(byed_player)
       self.byed_player = byed_player._replace(
           requested_matches=byed_player.requested_matches - 1)
@@ -210,8 +213,6 @@ class Pairer(object):
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
     my_lcm = min(MAX_LCM, self.lcm)
-    # Cycle 1: 0.1; 2: 0.05; 3, 4, 5: 0.0
-    perturbation_sigma = max(0, 0.15 - 0.05 * self.cycle)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
@@ -226,8 +227,7 @@ class Pairer(object):
             weights[i, j] = EFFECTIVE_INFINITY
           else:
             weights[i, j] = round(
-                (my_lcm *
-                 (p.score - q.score + random.gauss(0, perturbation_sigma)))**2)
+                (my_lcm * (p.score - q.score + random.gauss(0, self.sigma)))**2)
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
@@ -325,12 +325,16 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
       beta_right = 2 * beta + 2
       # normal;normal
       # swapped;swapped
-      weights[alpha_right, beta_left] = weights[alpha_left, beta_right] = (
-          PairingTransitionCost(pairings[alpha], pairings[beta]))
+      weights[alpha_right,
+              beta_left] = weights[alpha_left,
+                                   beta_right] = (PairingTransitionCost(
+                                       pairings[alpha], pairings[beta]))
       # normal;swapped
       # swapped;normal
-      weights[alpha_right, beta_right] = weights[alpha_left, beta_left] = (
-          PairingTransitionCost(pairings[alpha], pairings[beta][::-1]))
+      weights[alpha_right,
+              beta_right] = weights[alpha_left,
+                                    beta_left] = (PairingTransitionCost(
+                                        pairings[alpha], pairings[beta][::-1]))
   tour = elkai.solve_float_matrix(weights)
   output_pairings = []
   for node in tour[1::2]:
@@ -347,10 +351,10 @@ def OrderPairingsByScore(pairings: Pairings) -> Pairings:
 
 
 def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
-  left_cost = 1 - difflib.SequenceMatcher(
-      a=pairing_alpha[0], b=pairing_beta[0]).ratio()
-  right_cost = 1 - difflib.SequenceMatcher(
-      a=pairing_alpha[1], b=pairing_beta[1]).ratio()
+  left_cost = 1 - difflib.SequenceMatcher(a=pairing_alpha[0],
+                                          b=pairing_beta[0]).ratio()
+  right_cost = 1 - difflib.SequenceMatcher(a=pairing_alpha[1],
+                                           b=pairing_beta[1]).ratio()
   return left_cost + right_cost
 
 
@@ -358,26 +362,25 @@ def Main(argv):
   """Fetch records from the spreadsheet, generate pairings, write them back."""
   set_code, cycle = argv[1:]
   cycle = int(cycle)
-  previous_set = list(magic_sets.names.values())[
-      list(zip(*magic_sets.names.items()))[0].find(set_code) - 1]
+  previous_set_code = list(magic_sets.names.keys())[-2]
   sheet = sheet_manager.SheetManager(set_code, cycle)
-  sheet_old = sheet_manager.SheetManager(previous_set, 2)
+  sheet_old = sheet_manager.SheetManager(previous_set_code, 5)
   players_new = sheet.GetPlayers()
   players_old = {p.id: p.score for p in sheet_old.GetPlayers()}
   players = [
-      p._replace(
-          score=(2 * p.score +
-                 players_old.get(p.id, fractions.Fraction(1, 2))) / 3)
+      p._replace(score=(2 * p.score +
+                        players_old.get(p.id, fractions.Fraction(1, 2))) / 3)
       for p in players_new
   ]
-  pairer = Pairer(players)
+  # Sigma; Cycle 1: 0.1; 2: 0.05; 3, 4, 5: 0.0
+  pairer = Pairer(players, sigma=max(0, 0.15 - 0.05 * cycle))
   pairer.GiveBye()
   start = time.time()
-  pairings = pairer.MakePairings(random_pairings=cycle in (1,))
+  pairings = pairer.MakePairings(random_pairings=False)
   pairings = OrderPairingsByTsp(pairings)
   PrintPairings(pairings)
-  ValidatePairings(
-      pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
+  ValidatePairings(pairings,
+                   n=pairer.correct_num_matches + bool(pairer.byed_player))
   t = time.time() - start
   try:
     os.mkdir('pairings')

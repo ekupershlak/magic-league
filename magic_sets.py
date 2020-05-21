@@ -1,4 +1,4 @@
-"""Mapping of set codes to set names. We also rely on ordering."""
+"""Mapping of set codes to set names. We rely on ordering."""
 names = {
     'ELD': 'Throne of Eldrane',
     'THB': 'Theros Beyond Death',
