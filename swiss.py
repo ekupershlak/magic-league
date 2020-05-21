@@ -368,10 +368,10 @@ def Main(argv):
     os.mkdir('pairings')
   except FileExistsError:
     pass
-  with open(f'pairings/pairings-{set_code}{cycle}.{int(time.time())}.txt',
+  with open(f'pairings/{set_code}{cycle}.{int(time.time())}.txt',
             'w') as output:
     PrintPairings(pairings, stream=output)
-  with open(f'pairings/pairings-{set_code}{cycle}.txt', 'w') as output:
+  with open(f'pairings/{set_code}{cycle}.txt', 'w') as output:
     PrintPairings(pairings, stream=output)
   print(f'Finished in {int(t // 60)}m{t % 60:.1f}s wall time.')
 
