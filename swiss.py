@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*- python3
+# python3
 """Solver for swiss pairings."""
 
 import collections
@@ -23,6 +23,7 @@ from absl import flags
 
 import blitzstein_diaconis
 import elkai
+import magic_sets
 import numpy as np
 import player as player_lib
 import sheet_manager
@@ -194,8 +195,8 @@ class Pairer(object):
   def TravellingSalesPairings(self):
     """Compute optimal pairings with a travelling-salesman solver."""
     odd_players = list(p for p in self.players if Odd(p.requested_matches))
-    random.shuffle(odd_players)
     assert Even(len(odd_players))
+    random.shuffle(odd_players)
 
     counter = itertools.count()
     tsp_nodes = {}
@@ -209,6 +210,8 @@ class Pairer(object):
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
     my_lcm = min(MAX_LCM, self.lcm)
+    # Cycle 1: 0.2; 2: 0.1; 3, 4, 5: 0.0
+    perturbation_sigma = max(0, 0.3 - 0.1 * self.cycle)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
@@ -222,7 +225,9 @@ class Pairer(object):
           if p == q or p.id in q.opponents or q.id in p.opponents:
             weights[i, j] = EFFECTIVE_INFINITY
           else:
-            weights[i, j] = round((p.score * my_lcm - q.score * my_lcm)**2)
+            weights[i, j] = round(
+                (my_lcm *
+                 (p.score - q.score + random.gauss(0, perturbation_sigma)))**2)
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
@@ -353,9 +358,19 @@ def Main(argv):
   """Fetch records from the spreadsheet, generate pairings, write them back."""
   set_code, cycle = argv[1:]
   cycle = int(cycle)
-
+  previous_set = list(magic_sets.names.values())[
+      list(zip(*magic_sets.names.items()))[0].find(set_code) - 1]
   sheet = sheet_manager.SheetManager(set_code, cycle)
-  pairer = Pairer(sheet.GetPlayers())
+  sheet_old = sheet_manager.SheetManager(previous_set, 2)
+  players_new = sheet.GetPlayers()
+  players_old = {p.id: p.score for p in sheet_old.GetPlayers()}
+  players = [
+      p._replace(
+          score=(2 * p.score +
+                 players_old.get(p.id, fractions.Fraction(1, 2))) / 3)
+      for p in players_new
+  ]
+  pairer = Pairer(players)
   pairer.GiveBye()
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=cycle in (1,))

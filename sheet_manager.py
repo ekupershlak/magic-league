@@ -34,8 +34,12 @@ class SheetManager(object):
     self.sheet = None
 
   def _ConnectToSheet(self):
-    self.sheet = password.GetGc().open(
-        f'magic-ny {self.set_code} Sealed League')
+    if self.set_code == 'THB':
+      self.sheet = password.GetGc().open(
+          f'magic-ny Theros Beyond Death (THB) Sealed League')
+    else:
+      self.sheet = password.GetGc().open(
+          f'magic-ny {self.set_code} Sealed League')
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()
@@ -85,9 +89,8 @@ class SheetManager(object):
     wins = [int(n) for n in standings.col_values(4)[1:]]
     losses = [int(n) for n in standings.col_values(5)[1:]]
     requested_matches = [
-        int(s) for s in standings.col_values(9 + self.cycle - 1)[1:]
+        int(s) for s in standings.col_values(10 + self.cycle - 1)[1:]
     ]
-
     scores = [
         fractions.Fraction(w, (w + l)) if w + l else fractions.Fraction(1, 2)
         for w, l in zip(wins, losses)

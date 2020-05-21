@@ -14,6 +14,8 @@ Graph = Collection[Tuple[int, int]]
 def Graphical(d):
   """Whether the given degree sequence is graphical."""
   n = len(d)
+  if sum(d) % 2 == 1:
+    return False
   if any(di < 0 for di in d):
     return False
   d = [di for di in d if di > 0]
@@ -95,7 +97,7 @@ def BlitzsteinDiaconis(d) -> Tuple[fractions.Fraction, Graph]:
       }
       # 5. Pick j ∈ J with probability proportional to its degree in d.
       selection = random.choices(
-          list(candidates), [d[j] for j in candidates], k=1)[0]
+        list(candidates), [d[j] for j in candidates], k=1)[0]
       likelihood *= d[selection]
       likelihood /= sum(d[j] for j in candidates)
       # 6. Add the edge {i, j} to E and update d to ⊖ᵢ,ⱼ d.
