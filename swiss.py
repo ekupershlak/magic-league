@@ -268,7 +268,6 @@ class Pairer(object):
         print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings... '
               f'{next(spinner)}')
         if not edge_to_remove:
-          pool.shutdown(wait=False)
           return pairings
         out, in_ = edge_to_remove
         weights = weights.copy()
