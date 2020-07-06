@@ -248,12 +248,12 @@ class Pairer(object):
 
     def AfterSolve(future):
       w, tour = future.result()
-      semaphore.release()
       for s in TourSuccessors(tour, tsp_nodes):
         try:
           pri_q.put(s + (w,))
         except ValueError:
           pass
+      semaphore.release()
 
     tour = elkai.solve_int_matrix(weights)
     for s in TourSuccessors(tour, tsp_nodes):
@@ -262,6 +262,7 @@ class Pairer(object):
     with concurrent.futures.ProcessPoolExecutor(MAX_PROCESSES) as pool:
       while True:
         try:
+          semaphore.acquire()
           num_dupes, edge_to_remove, pairings, weights = pri_q.get()
         except ValueError:
           continue
@@ -273,7 +274,6 @@ class Pairer(object):
         weights = weights.copy()
         weights[out, in_] = EFFECTIVE_INFINITY
         weights[in_, out] = EFFECTIVE_INFINITY
-        semaphore.acquire()
         future = pool.submit(SolveWeights, weights)
         future.add_done_callback(AfterSolve)
 
