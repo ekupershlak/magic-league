@@ -378,7 +378,7 @@ def Main(argv):
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=False)
   pairings = OrderPairingsByTsp(pairings)
-  if pairer.byed_player and any(pairing[0].player == BYE for pairing in pairings):
+  if pairer.byed_player and any(pairing[0] == BYE for pairing in pairings):
     # If the BYE ended up in the left column, swap the columns.
     pairings = [(b, a) for (a, b) in pairings]
   PrintPairings(pairings)
