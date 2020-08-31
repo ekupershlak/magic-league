@@ -99,8 +99,10 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
     if p == q or p.id in q.opponents or q.id in p.opponents:
       raise RepeatMatchError(f'{p.id}, {q.id}')
 
+
 def RoundTo(n, to):
   return int(n / to + 0.5) * to
+
 
 def PrintPairings(pairings, stream=sys.stdout):
   """Print a pretty table of the model to the given stream."""
@@ -109,13 +111,18 @@ def PrintPairings(pairings, stream=sys.stdout):
       # 6 + 6 + 28 + 28 + 4 spaces + "vs." (3) = 75
       p_score = f'{float(p.score):.3f}'.lstrip('0')
       q_score = f'{float(q.score):.3f}'.lstrip('0')
-      n_stars = min(5, max(0, RoundTo(5 + math.log(max(0.00001, abs(p.score-q.score)), 2), 0.5)))
+      n_stars = min(
+          5,
+          max(
+              0,
+              RoundTo(5 + math.log(max(0.00001, abs(p.score - q.score)), 2),
+                      0.5)))
       star_string = '\u2b24' * int(n_stars)
       if n_stars % 1 == 0.5:  # Exact float comparison!? Should be OK because we just rounded to an exact power of 2.
         star_string += '\u25d6'
       if n_stars > 2:
         if stream.isatty():
-          star_string= f'\033[1m{star_string}\033[0m'
+          star_string = f'\033[1m{star_string}\033[0m'
       line = f'({p_score:>4}) {p.name:>28} vs. {q.name:<28} ({q_score:>4}) {star_string}'
       print(line)
     print()
