@@ -378,7 +378,9 @@ def Main(argv):
       for p in players_new
   ]
   # Sigma; Cycle 1: 0.1; 2: 0.05; 3, 4, 5: 0.0
-  pairer = Pairer(players, sigma=max(0, 0.15 - 0.05 * cycle))
+  sigma = max(0, 0.15 - 0.05 * cycle)
+  print(f'sigma = {sigma}')
+  pairer = Pairer(players, sigma=sigma)
   pairer.GiveBye()
   start = time.time()
   pairings = pairer.MakePairings(random_pairings=False)
