@@ -3,4 +3,5 @@ names = {
     'ELD': 'Throne of Eldrane',
     'THB': 'Theros Beyond Death',
     'IKO': 'Ikoria: Lair of Behemoths',
+    'M21': 'Core Set 2021',
 }
