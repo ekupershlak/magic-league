@@ -376,14 +376,16 @@ def Main(argv):
   cycle = int(cycle)
   previous_set_code = list(magic_sets.names.keys())[-2]
   sheet = sheet_manager.SheetManager(set_code, cycle)
-  sheet_old = sheet_manager.SheetManager(previous_set_code, 5)
   players_new = sheet.GetPlayers()
-  scores_old = {p.id: p.score for p in sheet_old.GetPlayers()}
   if cycle in (1,):
+    sheet_old = sheet_manager.SheetManager(previous_set_code, 5)
+    scores_old = {p.id: p.score for p in sheet_old.GetPlayers()}
     players = [
         p._replace(score=scores_old.get(p.id, fractions.Fraction(1, 2)))
         for p in players_new
     ]
+  else:
+    players = players_new
   # Sigma; Cycle 1: 0.1; 2: 0.05; 3, 4, 5: 0.0
   sigma = max(0, 0.15 - 0.05 * cycle)
   print(f'sigma = {sigma}')
