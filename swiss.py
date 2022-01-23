@@ -16,6 +16,7 @@ import random
 import sys
 import threading
 import time
+import warnings
 
 from typing import List, Optional, Tuple
 from absl import app
@@ -61,6 +62,10 @@ def Lcm(a, b):
   return a * b // math.gcd(a, b)
 
 
+def Rindex(lst, elt):
+  return len(lst) - list(reversed(lst)).index(elt) - 1
+
+
 def SSE(pairings):
   """Returns the sum of squared error (SSE) of pairings."""
   return sum((p.score - q.score)**2 for (p, q) in pairings)
@@ -76,7 +81,7 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
   Raises:
     WrongNumberOfMatchesError: There were not `n` matches.
     DuplicateMatchError: If the proposed pairings contain a duplicate.
-    RepeatMatchError: If the proposed contain a match that occurred in a
+    RepeatMatchWarning: If the proposed contain a match that occurred in a
     previous cycle.
   """
   if n is not None and len(pairings) != n:
@@ -97,7 +102,7 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
       raise DuplicateMatchError(' '.join(dupes))
   for p, q in pairings:
     if p == q or p.id in q.opponents or q.id in p.opponents:
-      raise RepeatMatchError(f'{p.id}, {q.id}')
+      warnings.warn(f'{p.id}, {q.id}', RepeatMatchWarning)
 
 
 def RoundTo(n, to):
@@ -236,11 +241,16 @@ class Pairer(object):
             (NodeType.SINGLE, NodeType.DOUBLE),
             (NodeType.DOUBLE, NodeType.SINGLE),
         ):
-          if p == q or p.id in q.opponents or q.id in p.opponents:
-            weights[i, j] = EFFECTIVE_INFINITY
-          else:
-            weights[i, j] = round(
+          score_term = round(
                 (my_lcm * (p.score - q.score + random.gauss(0, self.sigma)))**2)
+          if p == q:
+            weights[i, j] = EFFECTIVE_INFINITY
+          elif p.id in q.opponents or q.id in p.opponents:
+            index = max(Rindex(q.opponents, p.id), Rindex(p.opponents, q.id))
+            denom = min(len(p.opponents), len(q.opponents))
+            weights[i, j] = min(EFFECTIVE_INFINITY, EFFECTIVE_INFINITY * (index / denom) + score_term)
+          else:
+            weights[i, j] = score_term
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
                                 (NodeType.SINGLE, NodeType.HUB)):
           if p == q:
@@ -424,7 +434,7 @@ class DuplicateMatchError(Error):
   """The same match-up appears twice in this set of pairings."""
 
 
-class RepeatMatchError(Error):
+class RepeatMatchWarning(UserWarning):
   """A match-up from a previous round appears in this set of pairings."""
 
 
