@@ -38,10 +38,8 @@ MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
-flags.DEFINE_bool('write',
-                  False,
-                  'Write the pairings to the spreadsheet',
-                  short_name='w')
+flags.DEFINE_bool(
+    'write', False, 'Write the pairings to the spreadsheet', short_name='w')
 flags.DEFINE_bool(
     'fetch',
     False,
@@ -180,8 +178,8 @@ class Pairer(object):
           p for p in self.players if p.requested_matches == 3
           if BYE.id not in p.opponents
       ]
-      byed_player = min(eligible_players,
-                        key=lambda p: (p.score, random.random()))
+      byed_player = min(
+          eligible_players, key=lambda p: (p.score, random.random()))
       self.players.remove(byed_player)
       self.byed_player = byed_player._replace(
           requested_matches=byed_player.requested_matches - 1)
@@ -242,13 +240,15 @@ class Pairer(object):
             (NodeType.DOUBLE, NodeType.SINGLE),
         ):
           score_term = round(
-                (my_lcm * (p.score - q.score + random.gauss(0, self.sigma)))**2)
+              (my_lcm * (p.score - q.score + random.gauss(0, self.sigma)))**2)
           if p == q:
             weights[i, j] = EFFECTIVE_INFINITY
           elif p.id in q.opponents or q.id in p.opponents:
             index = max(Rindex(q.opponents, p.id), Rindex(p.opponents, q.id))
             denom = min(len(p.opponents), len(q.opponents))
-            weights[i, j] = min(EFFECTIVE_INFINITY, EFFECTIVE_INFINITY * (index / denom) + score_term)
+            weights[i, j] = (
+                min(EFFECTIVE_INFINITY,
+                    EFFECTIVE_INFINITY * (index / denom) + score_term))
           else:
             weights[i, j] = score_term
         elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
@@ -347,16 +347,12 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
       beta_right = 2 * beta + 2
       # normal;normal
       # swapped;swapped
-      weights[alpha_right,
-              beta_left] = weights[alpha_left,
-                                   beta_right] = (PairingTransitionCost(
-                                       pairings[alpha], pairings[beta]))
+      weights[alpha_right, beta_left] = weights[alpha_left, beta_right] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta]))
       # normal;swapped
       # swapped;normal
-      weights[alpha_right,
-              beta_right] = weights[alpha_left,
-                                    beta_left] = (PairingTransitionCost(
-                                        pairings[alpha], pairings[beta][::-1]))
+      weights[alpha_right, beta_right] = weights[alpha_left, beta_left] = (
+          PairingTransitionCost(pairings[alpha], pairings[beta][::-1]))
   tour = elkai.solve_float_matrix(weights)
   output_pairings = []
   for node in tour[1::2]:
@@ -373,10 +369,10 @@ def OrderPairingsByScore(pairings: Pairings) -> Pairings:
 
 
 def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
-  left_cost = 1 - difflib.SequenceMatcher(a=pairing_alpha[0],
-                                          b=pairing_beta[0]).ratio()
-  right_cost = 1 - difflib.SequenceMatcher(a=pairing_alpha[1],
-                                           b=pairing_beta[1]).ratio()
+  left_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[0], b=pairing_beta[0]).ratio()
+  right_cost = 1 - difflib.SequenceMatcher(
+      a=pairing_alpha[1], b=pairing_beta[1]).ratio()
   return left_cost + right_cost
 
 
@@ -408,8 +404,8 @@ def Main(argv):
     # If the BYE ended up in the left column, swap the columns.
     pairings = [(b, a) for (a, b) in pairings]
   PrintPairings(pairings)
-  ValidatePairings(pairings,
-                   n=pairer.correct_num_matches + bool(pairer.byed_player))
+  ValidatePairings(
+      pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
   t = time.time() - start
   try:
     os.mkdir('pairings')
