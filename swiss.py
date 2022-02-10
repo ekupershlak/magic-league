@@ -29,7 +29,7 @@ import numpy as np
 import player as player_lib
 import sheet_manager
 
-BYE = player_lib.Player('noreply', 'BYE', fractions.Fraction(0), 0, ())
+BYE = player_lib.Player('#N/A', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = flags.FLAGS
 HUB_COST = 1
