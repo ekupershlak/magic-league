@@ -10,4 +10,5 @@ names = {
     'AFR': 'Forgotten Realms',
     'MID': 'Innistrad Midnight Hunt',
     'VOW': 'Innistrad Crimson Vow',
+    'NEO': 'Kamigawa Neon Dynasty',
 }
