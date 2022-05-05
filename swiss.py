@@ -33,7 +33,7 @@ BYE = player_lib.Player('#N/A', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = flags.FLAGS
 HUB_COST = 1
-MAX_LCM = 10080  # 2 × 7!
+MAX_LCM = 1080
 MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
