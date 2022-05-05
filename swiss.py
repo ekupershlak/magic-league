@@ -33,7 +33,12 @@ BYE = player_lib.Player('#N/A', 'BYE', fractions.Fraction(0), 0, ())
 EFFECTIVE_INFINITY = (1 << 31) - 1
 FLAGS = flags.FLAGS
 HUB_COST = 1
-MAX_LCM = 1080
+# The TSP solver is limited to 32-bit integer precision; our weights must fit
+# into the range of that data type. Additionally, we want extra headspace for
+# "high discouragement" values. Thus we multiply our [0,1]-weights by precision
+# and round to an int to get a fixed-point score term with gradations of
+# 1/PRECISION.
+PRECISION = 1000000
 MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
@@ -151,9 +156,6 @@ class Pairer(object):
     self.players = players
     self.players_by_id = {player.id: player for player in players}
     self.byed_player = None
-    self.lcm = 1
-    for d in set(p.score.denominator for p in self.players):
-      self.lcm = Lcm(self.lcm, d)
 
   @property
   def correct_num_matches(self):
@@ -228,7 +230,6 @@ class Pairer(object):
 
     n = len(tsp_nodes)
     weights = np.zeros((n, n), dtype=int)
-    my_lcm = min(MAX_LCM, self.lcm)
     for i in range(n):
       for j in range(n):
         p, ptype = tsp_nodes[i]
@@ -240,7 +241,8 @@ class Pairer(object):
             (NodeType.DOUBLE, NodeType.SINGLE),
         ):
           score_term = round(
-              (my_lcm * (p.score - q.score + random.gauss(0, self.sigma)))**2)
+              (PRECISION *
+               (p.score - q.score + random.gauss(0, self.sigma))**2))
           if p == q:
             weights[i, j] = EFFECTIVE_INFINITY
           elif p.id in q.opponents or q.id in p.opponents:
@@ -261,7 +263,7 @@ class Pairer(object):
                                 (NodeType.DOUBLE, NodeType.HUB)):
           weights[i, j] = EFFECTIVE_INFINITY
         elif (ptype, qtype) == (NodeType.HUB, NodeType.HUB):
-          weights[i, j] = (HUB_COST * my_lcm)**2
+          weights[i, j] = HUB_COST**2 * PRECISION
         else:
           assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
 
