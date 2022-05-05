@@ -35,7 +35,7 @@ FLAGS = flags.FLAGS
 HUB_COST = 1
 # The TSP solver is limited to 32-bit integer precision; our weights must fit
 # into the range of that data type. Additionally, we want extra headspace for
-# "high discouragement" values. Thus we multiply our [0,1]-weights by precision
+# "high discouragement" values. Thus we multiply our [0,1]-weights by PRECISION
 # and round to an int to get a fixed-point score term with gradations of
 # 1/PRECISION.
 PRECISION = 1000000
@@ -143,6 +143,40 @@ def PrintPairings(pairings, stream=sys.stdout):
 
 
 class NodeType(enum.Enum):
+  """How the pairer works (TSP reduction).
+
+  The pairing algorithm in this module reduces the problem of determining
+  pairings to an instance of travelling-salesperson (TSP). It constructs a
+  weighted graph that corresponds to player win rate deltas and their requested
+  number of matches. A minimal tour over this graph is decodable back to a set
+  of pairings that honors players' requested number of matches and has the
+  minimal sum of squared win rate delta.
+
+  The reduction works thusly. Nodes in the constructed graph are one of three
+  types: SINGLE, DOUBLE, and HUB. SINGLE and DOUBLE nodes all have a
+  corresponding player. There is a DOUBLE node for every two matches requested
+  by a player plus an additional SINGLE node if that player requested an odd
+  number of matches. The weight between any two nodes that are either SINGLE or
+  DOUBLE is the cost to pair those players (their win rate delta). If the nodes
+  represent the same player, the cost is infinite.
+
+  Additionally, there is a HUB node for each SINGLE node. The cost from SINGLE
+  to HUB is zero, and the cost between HUB nodes is the maximum normal
+  cost. Because there are equal SINGLE and HUB nodes and the cost between HUB
+  nodes is maximal, the tour is discouraged from travelling between HUB nodes
+  for more than one consecutive hop. The result is a tour that travels from HUB
+  to SINGLE, optionally to one or more DOUBLEs, then back to a SINGLE and HUB. A
+  minimal number of hops between HUBs will exist because the cost of such a hop
+  is maximal.
+
+  Decoding the tour into pairings.
+
+  When the final tour passes through a DOUBLE node, the player associated with
+  that node plays each of the players associated with the nodes before and after
+  in the tour. When the tour passes through a SINGLE node, one neighboring node
+  will be a HUB and the other will be another player node (SINGLE or DOUBLE);
+  those players are paired. SINGLE--HUB and HUB--HUB connections are ignored.
+  """
   SINGLE = 1
   DOUBLE = 2
   HUB = 3
