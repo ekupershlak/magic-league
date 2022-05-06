@@ -364,7 +364,17 @@ def SolveWeights(weights):
 
 
 def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
-  """Sort the given pairings by minimal cost tour."""
+  """Sort the given pairings by minimal cost tour.
+
+  After the pairings are determined (a completely independent step), this
+  function uses an entirely distinct TSP reduction to sort the pairings such
+  that there is a low "display diff" between adjacent matches on the printed
+  list of pairings.
+
+  In other words, it clusters match entries so players' matches appear near each
+  other. It reduces players' need to Ctrl-F for their names and makes the list
+  so very pretty.
+  """
   pairings = pairings[:]
   random.shuffle(pairings)
   num_nodes = 2 * len(pairings) + 1
