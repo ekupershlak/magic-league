@@ -60,11 +60,6 @@ def Even(n):
   return not Odd(n)
 
 
-def Lcm(a, b):
-  """Compute the lowest common multiple."""
-  return a * b // math.gcd(a, b)
-
-
 def Rindex(lst, elt):
   return len(lst) - list(reversed(lst)).index(elt) - 1
 
