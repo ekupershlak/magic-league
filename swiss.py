@@ -157,25 +157,28 @@ class NodeType(enum.Enum):
   corresponding player. There is a DOUBLE node for every two matches requested
   by a player plus an additional SINGLE node if that player requested an odd
   number of matches. The weight between any two nodes that are either SINGLE or
-  DOUBLE is the cost to pair those players (their win rate delta). If the nodes
-  represent the same player, the cost is infinite.
+  DOUBLE is the cost to pair those players (their squared win rate delta). If
+  the nodes represent the same player, the cost is infinite.
 
   Additionally, there is a HUB node for each SINGLE node. The cost from SINGLE
-  to HUB is zero, and the cost between HUB nodes is the maximum normal
-  cost. Because there are equal SINGLE and HUB nodes and the cost between HUB
-  nodes is maximal, the tour is discouraged from travelling between HUB nodes
-  for more than one consecutive hop. The result is a tour that travels from HUB
-  to SINGLE, optionally to one or more DOUBLEs, then back to a SINGLE and HUB. A
-  minimal number of hops between HUBs will exist because the cost of such a hop
-  is maximal.
+  to HUB is zero, and the cost between HUB nodes is the maximum normal cost
+  (equivalent to win rate delta of 1.0). Because there are equal SINGLE and HUB
+  nodes and the cost between HUB nodes is maximal, the tour is discouraged from
+  travelling between HUB nodes for more than one consecutive hop. The result is
+  a tour that travels from HUB to SINGLE, optionally to one or more DOUBLEs,
+  then back to a SINGLE and HUB; it repeats strings of
+  HUB--SINGLE--DOUBLE*--SINGLE--HUB. A minimal number of hops between HUBs will
+  exist because the cost of such a hop is maximal.
 
   Decoding the tour into pairings.
 
   When the final tour passes through a DOUBLE node, the player associated with
   that node plays each of the players associated with the nodes before and after
-  in the tour. When the tour passes through a SINGLE node, one neighboring node
-  will be a HUB and the other will be another player node (SINGLE or DOUBLE);
-  those players are paired. SINGLE--HUB and HUB--HUB connections are ignored.
+  it in the tour. When the tour passes through a SINGLE node, one neighboring
+  node will be a HUB and the other will be another player node (SINGLE or
+  DOUBLE); those players are paired. SINGLE--HUB and HUB--HUB connections are
+  ignored.
+
   """
   SINGLE = 1
   DOUBLE = 2
