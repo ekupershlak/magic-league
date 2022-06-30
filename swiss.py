@@ -222,7 +222,9 @@ class Pairer(object):
       m = nx.min_weight_matching(g)
       pairings = [(nodes[a], nodes[b]) for (a, b) in m]
       try:
-        ValidatePairings(pairings)
+        with warnings.catch_warnings():
+          warnings.simplefilter('ignore')
+          ValidatePairings(pairings)
         break
       except DuplicateMatchError:
         ordered_m = random.sample(m, k=len(m))
