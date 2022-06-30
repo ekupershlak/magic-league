@@ -36,7 +36,8 @@ class SheetManager(object):
 
   def _ConnectToSheet(self):
     self.sheet = password.GetGc().open(
-          f'magic-ny {magic_sets.names[self.set_code]} ({self.set_code}) Sealed League')
+        f'magic-ny {magic_sets.names[self.set_code]} ({self.set_code}) Sealed League'
+    )
 
   def GetPlayers(self):
     player_list = self._FetchFromCache()
@@ -79,6 +80,7 @@ class SheetManager(object):
 
   def _FetchFromSheet(self):
     """Fetches data from the spreadsheet."""
+    print('Fetching from spreadsheet…')
     self._ConnectToSheet()
     standings = self.sheet.worksheet('Standings')
     names = list(standings.col_values(1)[1:])
