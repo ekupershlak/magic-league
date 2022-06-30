@@ -31,7 +31,7 @@ import sheet_manager
 import networkx as nx
 
 BYE = player_lib.Player('#N/A', 'BYE', fractions.Fraction(0), 0, ())
-DISCOURAGEMENT = 5
+DISCOURAGEMENT = 1
 FLAGS = flags.FLAGS
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
