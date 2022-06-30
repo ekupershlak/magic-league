@@ -247,10 +247,12 @@ class Pairer(object):
 
   def TravellingSalesPairings(self):
     """Compute optimal pairings with a travelling-salesman solver."""
-    odd_players = list(p for p in self.players if Odd(p.requested_matches))
-    assert Even(len(odd_players))
-    random.shuffle(odd_players)
+    degree_sequence = [p.requested_matches for p in self.players]
+    assert blitzstein_diaconis.Graphical(
+        degree_sequence), 'Degree sequence is not graphical.'
 
+    odd_players = list(p for p in self.players if Odd(p.requested_matches))
+    random.shuffle(odd_players)
     counter = itertools.count()
     tsp_nodes = {}
     for p in self.players:
