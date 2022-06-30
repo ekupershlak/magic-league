@@ -128,10 +128,6 @@ def PrintPairings(pairings, stream=sys.stdout):
       line = f'({p_score:>4}) {p.name:>28} vs. {q.name:<28} ({q_score:>4}) {star_string}'
       print(line)
     print()
-    loss = SSE(pairings)
-    approx_loss = loss.limit_denominator(1000)
-    approx_string = 'Approx. ' if approx_loss != loss else ''
-    print(f'Sum of squared error: {approx_string}{approx_loss!s}')
     rmse = math.sqrt(SSE(pairings) / len(pairings))
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
 
