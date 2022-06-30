@@ -347,6 +347,10 @@ class DuplicateMatchError(Error):
   """The same match-up appears twice in this set of pairings."""
 
 
+class SelfMatchError(Error):
+  """A player is match against themself."""
+
+
 class RepeatMatchWarning(UserWarning):
   """A match-up from a previous round appears in this set of pairings."""
 
