@@ -213,9 +213,10 @@ class Pairer(object):
           continue
         weight = (p.score - q.score + random.gauss(0, self.sigma))**2
         if p.id in q.opponents or q.id in p.opponents:
-          index = max(Rindex(q.opponents, p.id), Rindex(p.opponents, q.id))
-          denom = min(len(p.opponents), len(q.opponents))
-          weight += DISCOURAGEMENT * (index / denom)
+          factor = max(
+              Rindex(q.opponents, p.id) / len(q.opponents),
+              Rindex(p.opponents, q.id) / len(p.opponents))
+          weight += DISCOURAGEMENT * factor
         g.add_edge(i, j, weight=weight)
     while True:
       m = nx.min_weight_matching(g)
