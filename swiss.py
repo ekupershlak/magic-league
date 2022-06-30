@@ -79,8 +79,8 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
   Raises:
     WrongNumberOfMatchesError: There were not `n` matches.
     DuplicateMatchError: If the proposed pairings contain a duplicate.
-    RepeatMatchWarning: If the proposed contain a match that occurred in a
-    previous cycle.
+    RepeatMatchWarning: If the proposed pairings contain a match that occurred
+    in a previous cycle.
   """
   if n is not None and len(pairings) != n:
     raise WrongNumberOfMatchesError(
