@@ -182,8 +182,6 @@ class Pairer(object):
       pairings = self.MaximumMatchingPairings()
     if self.byed_player:
       pairings.append((self.byed_player, BYE))
-    ValidatePairings(
-        pairings, n=self.correct_num_matches + bool(self.byed_player))
     return pairings
 
   def RandomPairings(self) -> Pairings:
