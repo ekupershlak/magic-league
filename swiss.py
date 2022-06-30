@@ -92,8 +92,14 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
     if dupes:
       raise DuplicateMatchError(' '.join(dupes))
   for p, q in pairings:
-    if p == q or p.id in q.opponents or q.id in p.opponents:
-      warnings.warn(f'{p.id}, {q.id}', RepeatMatchWarning)
+    if p == q:
+      raise SelfMatchError(p)
+    if p.id in q.opponents or q.id in p.opponents:
+      matches_ago = max(
+          len(q.opponents) - Rindex(q.opponents, p.id),
+          len(p.opponents) - Rindex(p.opponents, q.id))
+      warnings.warn(f'{p.id} vs. {q.id} from {matches_ago} matches ago.',
+                    RepeatMatchWarning)
 
 
 def RoundTo(n, to):
