@@ -28,18 +28,11 @@ import magic_sets
 import numpy as np
 import player as player_lib
 import sheet_manager
+import networkx as nx
 
 BYE = player_lib.Player('#N/A', 'BYE', fractions.Fraction(0), 0, ())
-EFFECTIVE_INFINITY = (1 << 31) - 1
+DISCOURAGEMENT = 5
 FLAGS = flags.FLAGS
-HUB_COST = 1
-# The TSP solver is limited to 32-bit integer precision; our weights must fit
-# into the range of that data type. Additionally, we want extra headspace for
-# "high discouragement" values. Thus we multiply our [0,1]-weights by PRECISION
-# and round to an int to get a fixed-point score term with gradations of
-# 1/PRECISION.
-PRECISION = 1000000
-MAX_PROCESSES = multiprocessing.cpu_count()
 
 Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 
@@ -137,49 +130,6 @@ def PrintPairings(pairings, stream=sys.stdout):
     print(f'Root Mean Squared Error (per match): {rmse:.4f}')
 
 
-class NodeType(enum.Enum):
-  """How the pairer works (TSP reduction).
-
-  The pairing algorithm in this module reduces the problem of determining
-  pairings to an instance of travelling-salesperson (TSP). It constructs a
-  weighted graph that corresponds to player win rate deltas and their requested
-  number of matches. A minimal tour over this graph is decodable back to a set
-  of pairings that honors players' requested number of matches and has the
-  minimal sum of squared win rate delta.
-
-  The reduction works thusly. Nodes in the constructed graph are one of three
-  types: SINGLE, DOUBLE, and HUB. SINGLE and DOUBLE nodes all have a
-  corresponding player. There is a DOUBLE node for every two matches requested
-  by a player plus an additional SINGLE node if that player requested an odd
-  number of matches. The weight between any two nodes that are either SINGLE or
-  DOUBLE is the cost to pair those players (their squared win rate delta). If
-  the nodes represent the same player, the cost is infinite.
-
-  Additionally, there is a HUB node for each SINGLE node. The cost from SINGLE
-  to HUB is zero, and the cost between HUB nodes is the maximum normal cost
-  (equivalent to win rate delta of 1.0). Because there are equal SINGLE and HUB
-  nodes and the cost between HUB nodes is maximal, the tour is discouraged from
-  travelling between HUB nodes for more than one consecutive hop. The result is
-  a tour that travels from HUB to SINGLE, optionally to one or more DOUBLEs,
-  then back to a SINGLE and HUB; it repeats strings of
-  HUB--SINGLE--DOUBLE*--SINGLE--HUB. A minimal number of hops between HUBs will
-  exist because the cost of such a hop is maximal.
-
-  Decoding the tour into pairings.
-
-  When the final tour passes through a DOUBLE node, the player associated with
-  that node plays each of the players associated with the nodes before and after
-  it in the tour. When the tour passes through a SINGLE node, one neighboring
-  node will be a HUB and the other will be another player node (SINGLE or
-  DOUBLE); those players are paired. SINGLE--HUB and HUB--HUB connections are
-  ignored.
-
-  """
-  SINGLE = 1
-  DOUBLE = 2
-  HUB = 3
-
-
 class Pairer(object):
   """Manages pairing a cycle of a league."""
 
@@ -227,7 +177,7 @@ class Pairer(object):
       pairings = self.RandomPairings()
     else:
       print('Optimizing pairings')
-      pairings = self.TravellingSalesPairings()
+      pairings = self.MaximumMatchingPairings()
     if self.byed_player:
       pairings.append((self.byed_player, BYE))
     ValidatePairings(
@@ -245,133 +195,51 @@ class Pairer(object):
       pairings.append((players_by_index[i], players_by_index[j]))
     return pairings
 
-  def TravellingSalesPairings(self):
+  def MaximumMatchingPairings(self):
     """Compute optimal pairings with a travelling-salesman solver."""
     degree_sequence = [p.requested_matches for p in self.players]
     assert blitzstein_diaconis.Graphical(
         degree_sequence), 'Degree sequence is not graphical.'
 
-    odd_players = list(p for p in self.players if Odd(p.requested_matches))
-    random.shuffle(odd_players)
-    counter = itertools.count()
-    tsp_nodes = {}
-    for p in self.players:
-      for _ in range(p.requested_matches // 2):
-        tsp_nodes[next(counter)] = (p, NodeType.DOUBLE)
-    for p in odd_players:
-      tsp_nodes[next(counter)] = (p, NodeType.SINGLE)
-      tsp_nodes[next(counter)] = (p, NodeType.HUB)
-
-    n = len(tsp_nodes)
-    weights = np.zeros((n, n), dtype=int)
-    for i in range(n):
-      for j in range(n):
-        p, ptype = tsp_nodes[i]
-        q, qtype = tsp_nodes[j]
-        if (ptype, qtype) in (
-            (NodeType.DOUBLE, NodeType.DOUBLE),
-            (NodeType.SINGLE, NodeType.SINGLE),
-            (NodeType.SINGLE, NodeType.DOUBLE),
-            (NodeType.DOUBLE, NodeType.SINGLE),
-        ):
-          score_term = round(
-              (PRECISION *
-               (p.score - q.score + random.gauss(0, self.sigma))**2))
-          if p == q:
-            weights[i, j] = EFFECTIVE_INFINITY
-          elif p.id in q.opponents or q.id in p.opponents:
-            index = max(Rindex(q.opponents, p.id), Rindex(p.opponents, q.id))
-            denom = min(len(p.opponents), len(q.opponents))
-            weights[i, j] = (
-                min(EFFECTIVE_INFINITY,
-                    EFFECTIVE_INFINITY * (index / denom) + score_term))
-          else:
-            weights[i, j] = score_term
-        elif (ptype, qtype) in ((NodeType.HUB, NodeType.SINGLE),
-                                (NodeType.SINGLE, NodeType.HUB)):
-          if p == q:
-            weights[i, j] = 0
-          else:
-            weights[i, j] = EFFECTIVE_INFINITY
-        elif (ptype, qtype) in ((NodeType.HUB, NodeType.DOUBLE),
-                                (NodeType.DOUBLE, NodeType.HUB)):
-          weights[i, j] = EFFECTIVE_INFINITY
-        elif (ptype, qtype) == (NodeType.HUB, NodeType.HUB):
-          weights[i, j] = HUB_COST**2 * PRECISION
-        else:
-          assert False, f'{p.id} {ptype} -- {q.id} {qtype}'
-
-    pairings = []
-    pri_q = queue.PriorityQueue()
-    semaphore = threading.BoundedSemaphore(MAX_PROCESSES)
-
-    def AfterSolve(future):
-      w, tour = future.result()
-      for s in TourSuccessors(tour, tsp_nodes):
-        try:
-          pri_q.put(s + (w,))
-        except ValueError:
-          pass
-      semaphore.release()
-
-    tour = elkai.solve_int_matrix(weights)
-    for s in TourSuccessors(tour, tsp_nodes):
-      pri_q.put(s + (weights,))
-    spinner = itertools.cycle(['/', '—', '\\', '|'])
-    with concurrent.futures.ProcessPoolExecutor(MAX_PROCESSES) as pool:
-      while True:
-        try:
-          semaphore.acquire()
-          num_dupes, edge_to_remove, pairings, weights = pri_q.get()
-        except ValueError:
+    nodes = list(
+        collections.Counter({p: p.requested_matches for p in self.players
+                            }).elements())
+    g = nx.Graph()
+    for i in range(len(nodes)):
+      p = nodes[i]
+      for j in range(len(nodes)):
+        q = nodes[j]
+        if p == q:
           continue
-        print(f'\033[A\033[KEliminating {num_dupes} duplicate pairings... '
-              f'{next(spinner)}')
-        if not edge_to_remove:
-          return pairings
-        out, in_ = edge_to_remove
-        weights = weights.copy()
-        weights[out, in_] = EFFECTIVE_INFINITY
-        weights[in_, out] = EFFECTIVE_INFINITY
-        future = pool.submit(SolveWeights, weights)
-        future.add_done_callback(AfterSolve)
-
-
-def TourSuccessors(tour: List[int], tsp_nodes):
-  """Yield pairings and nominate one dupe-match edge to be removed."""
-  pairings = []
-  edges_to_remove = []
-  for out, in_ in zip(tour, tour[1:] + [tour[0]]):
-    p, ptype = tsp_nodes[out]
-    q, qtype = tsp_nodes[in_]
-    if (ptype, qtype) in (
-        (NodeType.DOUBLE, NodeType.DOUBLE),
-        (NodeType.SINGLE, NodeType.SINGLE),
-        (NodeType.SINGLE, NodeType.DOUBLE),
-        (NodeType.DOUBLE, NodeType.SINGLE),
-    ):
-      if (p, q) in pairings or (q, p) in pairings:
-        edges_to_remove.append((out, in_))
-      else:
-        pairings.append((p, q))
-  if not edges_to_remove:
-    yield (0, None, pairings)
-  else:
-    for edge in edges_to_remove:
-      yield (len(edges_to_remove), edge, pairings)
-
-
-def SolveWeights(weights):
-  return weights, elkai.solve_int_matrix(weights)
+        weight = (p.score - q.score + random.gauss(0, self.sigma))**2
+        if p.id in q.opponents or q.id in p.opponents:
+          index = max(Rindex(q.opponents, p.id), Rindex(p.opponents, q.id))
+          denom = min(len(p.opponents), len(q.opponents))
+          weight += DISCOURAGEMENT * (index / denom)
+        g.add_edge(i, j, weight=weight)
+    while True:
+      m = nx.min_weight_matching(g)
+      pairings = [(nodes[a], nodes[b]) for (a, b) in m]
+      try:
+        ValidatePairings(pairings)
+        break
+      except DuplicateMatchError:
+        ordered_m = random.sample(m, k=len(m))
+        seen = set()
+        for (a, b) in ordered_m:
+          if (nodes[a], nodes[b]) in seen:
+            g.remove_edge(a, b)
+            break
+          seen.add((nodes[a], nodes[b]))
+    return pairings
 
 
 def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
   """Sort the given pairings by minimal cost tour.
 
   After the pairings are determined (a completely independent step), this
-  function uses an entirely distinct TSP reduction to sort the pairings such
-  that there is a low "display diff" between adjacent matches on the printed
-  list of pairings.
+  function uses a TSP reduction to sort the pairings such that there is a low
+  "display diff" between adjacent matches on the printed list of pairings.
 
   In other words, it clusters match entries so players' matches appear near each
   other. It reduces players' need to Ctrl-F for their names and makes the list

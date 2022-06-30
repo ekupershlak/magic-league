@@ -1,5 +1,6 @@
 gspread>=0.6.2
 oauth2client>=4.1.1
 elkai>=0.0.7
+networkx
 numpy>=1.16.3
 absl-py
