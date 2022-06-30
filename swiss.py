@@ -227,7 +227,7 @@ class Pairer(object):
           ValidatePairings(pairings)
         break
       except DuplicateMatchError:
-        ordered_m = random.sample(m, k=len(m))
+        ordered_m = random.sample(list(m), k=len(m))
         seen = set()
         for (a, b) in ordered_m:
           if (nodes[a], nodes[b]) in seen:
