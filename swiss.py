@@ -230,7 +230,7 @@ class Pairer(object):
         ordered_m = random.sample(list(m), k=len(m))
         seen = set()
         for (a, b) in ordered_m:
-          if (nodes[a], nodes[b]) in seen:
+          if (nodes[a], nodes[b]) in seen or (nodes[b], nodes[a]) in seen:
             g.remove_edge(a, b)
             break
           seen.add((nodes[a], nodes[b]))
