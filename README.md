@@ -6,14 +6,12 @@ At my workplace, we have a recurring Magic: the Gathering sealed league. A
 problem we faced was that people needed flexibility to play varying numbers of
 matches. We also wanted to maintain the benefits of Swiss pairings.
 
-This software uses the LKH traveling salesman solver to assign matches in a way
-that respects requested numbers of matches while minimizing differences in
+This software uses the min-weight graph matching to assign matches in a way that
+respects requested numbers of matches while minimizing differences in
 win-percentage among the pairings. It can post those pairings directly to a
 Google sheet that is specifically formatted.
 
 ## Setup
-
-**Python 3 is required.**
 
 ### Install prerequisites
 
