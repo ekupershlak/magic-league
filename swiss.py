@@ -173,7 +173,7 @@ class Pairer(object):
       return self.byed_player
 
   def MakePairings(self, random_pairings=False) -> Pairings:
-    """Make pairings — random in cycle 1, else TSP optimized."""
+    """Make pairings — random or optimized depending on parameter."""
     if random_pairings:
       print('Random pairings')
       pairings = self.RandomPairings()
@@ -196,7 +196,7 @@ class Pairer(object):
     return pairings
 
   def MaximumMatchingPairings(self):
-    """Compute optimal pairings with a travelling-salesman solver."""
+    """Compute optimal pairings with a maximum matching solver."""
     degree_sequence = [p.requested_matches for p in self.players]
     assert blitzstein_diaconis.Graphical(
         degree_sequence), 'Degree sequence is not graphical.'
