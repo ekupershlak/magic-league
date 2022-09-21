@@ -12,4 +12,5 @@ names = {
     'VOW': 'Innistrad Crimson Vow',
     'NEO': 'Kamigawa Neon Dynasty',
     'SNC': 'Streets of New Capenna',
+    'DMU': 'Dominaria United',
 }
