@@ -39,6 +39,8 @@ Pairings = List[Tuple[player_lib.Player, player_lib.Player]]
 flags.DEFINE_bool(
     'write', False, 'Write the pairings to the spreadsheet', short_name='w')
 flags.DEFINE_bool(
+    'tabprint', False, 'Write tab-separated names to stdout.', short_name='t')
+flags.DEFINE_bool(
     'fetch',
     False,
     'Force a fetch from the sheet, overriding the 20 minute cache timeout.',
@@ -320,7 +322,11 @@ def Main(argv):
   if pairer.byed_player and any(pairing[0] == BYE for pairing in pairings):
     # If the BYE ended up in the left column, swap the columns.
     pairings = [(b, a) for (a, b) in pairings]
-  PrintPairings(pairings)
+  if FLAGS.tabprint:
+    for p, q in pairings:
+      print(f'{p.name}\t{q.name}')
+  else:
+    PrintPairings(pairings)
   ValidatePairings(
       pairings, n=pairer.correct_num_matches + bool(pairer.byed_player))
   t = time.time() - start
