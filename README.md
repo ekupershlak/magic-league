@@ -41,7 +41,7 @@ The most common invocation:
 python3 swiss.py <set code> <cycle number> -w
 ```
 
-or `--help` for all the options.
+or `--helpshort` for all the options.
 
 ## Template League Spreadsheet
 
