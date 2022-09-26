@@ -51,10 +51,6 @@ def Odd(n):
   return n % 2 == 1
 
 
-def Even(n):
-  return not Odd(n)
-
-
 def Rindex(lst, elt):
   return len(lst) - list(reversed(lst)).index(elt) - 1
 
@@ -280,11 +276,6 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
       next_pairing = next_pairing[::-1]
     output_pairings.append(next_pairing)
   return output_pairings
-
-
-def OrderPairingsByScore(pairings: Pairings) -> Pairings:
-  return list(
-      sorted(pairings, key=lambda t: (t[0].score, t[1].score, t), reverse=True))
 
 
 def PairingTransitionCost(pairing_alpha, pairing_beta) -> float:
