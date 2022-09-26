@@ -52,10 +52,11 @@ def Odd(n):
 
 
 def Rindex(lst, elt):
+  """Returns the index of the rightmost occurrence of `elt` in `lst`."""
   return len(lst) - list(reversed(lst)).index(elt) - 1
 
 
-def SSE(pairings):
+def SSE(pairings: Pairings):
   """Returns the sum of squared error (SSE) of pairings."""
   return sum((p.score - q.score)**2 for (p, q) in pairings)
 
@@ -71,7 +72,8 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
     WrongNumberOfMatchesError: There were not `n` matches.
     DuplicateMatchError: If the proposed pairings contain a duplicate.
     RepeatMatchWarning: If the proposed pairings contain a match that occurred
-    in a previous cycle.
+        in a previous cycle.
+    SelfMatchError: If a player is matched to themself.
   """
   if n is not None and len(pairings) != n:
     raise WrongNumberOfMatchesError(
@@ -101,6 +103,7 @@ def ValidatePairings(pairings: Pairings, n: Optional[int] = None) -> None:
 
 
 def RoundTo(n, to):
+  """Rounds `n` to the nearest increment of `to`."""
   return int(n / to + 0.5) * to
 
 
