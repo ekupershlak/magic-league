@@ -13,13 +13,13 @@ import magic_sets
 import password
 import player as player_lib
 
-THURSDAY = 3
+DEADLINE_WEEKDAY = 4  # Friday
 
 
 def CycleDeadline():
   today = datetime.date.today()
   weekday = today.weekday()
-  cycle_length = (THURSDAY - weekday) % 7 + 7
+  cycle_length = (DEADLINE_WEEKDAY - weekday) % 7 + 7
   if cycle_length < 10:
     cycle_length += 7
   deadline = today + datetime.timedelta(days=cycle_length)
