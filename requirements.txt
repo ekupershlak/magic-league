@@ -1,6 +1,7 @@
-gspread>=0.6.2
-oauth2client>=4.1.1
+absl-py
 elkai  # 0.1.2 builds exist only for Python <= 3.9
+functions-framework==3.*
+google-auth
+gspread>=0.6.2
 networkx
 numpy>=1.16.3
-absl-py
