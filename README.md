@@ -64,4 +64,17 @@ hard-coded in `sheet_manager.py`. You can use [this template sheet][1] to track
 your own league, or adapt `sheet_manager` to use ranges appropriate to an
 existing sheet.
 
+## (Cloud) Run
+
+As an alternative, this script can be hosted using Google Cloud Run. Deploy it
+using the following command:
+
+```
+gcloud functions deploy <CloudRun-func-name> --gen2 \
+    --runtime=python38 --source=. --entry-point=generate_pairings \
+    --trigger-http \
+    --region=<region> --project=<project>
+```
+
+
 [1]: https://docs.google.com/spreadsheets/d/1wDgi1rTJ3bq7-i91jEPzho4gVGx2SAaKOSALNtz41CA/edit?usp=sharing
