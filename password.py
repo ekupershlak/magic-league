@@ -1,7 +1,7 @@
 """OAuth2 authentication for magic-ny league parings."""
 
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.auth import default
 
 scope = [
     'https://spreadsheets.google.com/feeds',
@@ -10,6 +10,5 @@ scope = [
 
 
 def GetGc():
-  credentials = ServiceAccountCredentials.from_json_keyfile_name(
-      'credentials.json', scope)
+  credentials, _ = default(scopes=scope)
   return gspread.authorize(credentials)

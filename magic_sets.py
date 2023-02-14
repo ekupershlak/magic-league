@@ -13,4 +13,5 @@ names = {
     'NEO': 'Kamigawa Neon Dynasty',
     'SNC': 'Streets of New Capenna',
     'DMU': 'Dominaria United',
+    'BRO': 'Brothers\' War',
 }
