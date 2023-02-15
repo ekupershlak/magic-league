@@ -16,7 +16,7 @@ def generate_pairings(request):
 
     sheet = sheet_manager.UrlSheetManager(req["sheet"], req["cycle"], True)
     sheet_old = None
-    if "sheet_old" in req:
+    if req.get("sheet_old"):
         sheet_old = sheet_manager.SetSheetManager(req["sheet_old"], 5, True)
     cycle = int(req["cycle"])
     write = req.get("write", "false").lower() == "true"
