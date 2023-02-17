@@ -17,8 +17,8 @@ def generate_pairings(request):
     sheet = sheet_manager.UrlSheetManager(req["sheet"], req["cycle"], True)
     sheet_old = None
     if req.get("sheet_old"):
-        sheet_old = sheet_manager.SetSheetManager(req["sheet_old"], 5, True)
+        sheet_old = sheet_manager.UrlSheetManager(req["sheet_old"], 5, True)
     cycle = int(req["cycle"])
-    write = req.get("write", "false").lower() == "true"
+    write = req.get("write", False) == True
     swiss.GeneratePairings(sheet, sheet_old, cycle, tabprint=False, write=write)
     return "OK"
