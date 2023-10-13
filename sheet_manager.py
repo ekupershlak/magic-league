@@ -1,11 +1,12 @@
 # python3
 """Liaison to Google Sheets."""
 
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 import datetime
 import fractions
 import hashlib
 import itertools
+import gspread
 import os
 import pickle
 import random
@@ -32,7 +33,7 @@ class SheetManager(ABC):
 
     def __init__(self, cycle, fetch: bool):
         self.cycle = cycle
-        self.sheet = None
+        self.sheet: gspread.Spreadsheet = None
         self.fetch = fetch
 
     @abstractmethod
@@ -55,9 +56,18 @@ class SheetManager(ABC):
         # just before writing to make sure it's fresh.
         self._ConnectToSheet()
 
+        last_pairing_row = len(pairings) + 1
+
         ws_name = "Cycle " + str(self.cycle)
         output = self.sheet.worksheet(ws_name)
-        pairings_range = output.range(f"B2:C{len(pairings) + 1}")
+
+        # Delete extra rows.
+        if last_pairing_row < output.row_count:
+            output.delete_rows(last_pairing_row + 1, output.row_count)
+        # Copy formulas from the first row to all subsequent rows.
+        output.copy_range("2:2", f"3:{last_pairing_row}")
+        # Add pairings.
+        pairings_range = output.range(f"B2:C{last_pairing_row}")
 
         flattened_pairings = itertools.chain.from_iterable(pairings)
         for cell, player in zip(pairings_range, flattened_pairings):
@@ -70,7 +80,8 @@ class SheetManager(ABC):
         """Fetches data from local file, falling back to the spreadsheet."""
 
         try:
-            mtime = datetime.datetime.fromtimestamp(os.stat(self._filename).st_mtime)
+            mtime = datetime.datetime.fromtimestamp(
+                os.stat(self._filename).st_mtime)
             age = datetime.datetime.now() - mtime
             if age < datetime.timedelta(minutes=20) and not self.fetch:
                 player_list = pickle.load(open(self._filename, "rb"))
@@ -111,7 +122,8 @@ class SheetManager(ABC):
         for vitals in zip(ids, names, scores, requested_matches):
             id_, name, score, rm = vitals
             opponent_ids = tuple(b for (a, b) in previous_pairings if id_ == a)
-            player_list.append(player_lib.Player(id_, name, score, rm, opponent_ids))
+            player_list.append(player_lib.Player(
+                id_, name, score, rm, opponent_ids))
         print("Fetched previous results from sheet")
         return player_list
 
