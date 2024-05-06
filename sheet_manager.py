@@ -2,15 +2,17 @@
 """Liaison to Google Sheets."""
 
 from abc import ABC, abstractmethod
+from collections import Counter
+from typing import List
 import datetime
 import fractions
 import hashlib
 import itertools
-import gspread
 import os
 import pickle
 import random
 
+import gspread
 import magic_sets
 import password
 import player as player_lib
@@ -125,7 +127,19 @@ class SheetManager(ABC):
             player_list.append(player_lib.Player(
                 id_, name, score, rm, opponent_ids))
         print("Fetched previous results from sheet")
+        _validate_players(player_list)
         return player_list
+
+
+def _validate_players(players: List[player_lib.Player]):
+    player_ids = Counter([player.id for player in players])
+    duplicates = [k for (k, v) in player_ids.items() if v > 1]
+    if len(duplicates) > 0:
+        raise DuplicatePlayerError(f'Duplicate player IDs: {player_ids}')
+
+
+class DuplicatePlayerError(Exception):
+    """Error due to duplicate players."""
 
 
 class SetSheetManager(SheetManager):
