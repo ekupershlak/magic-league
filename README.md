@@ -47,6 +47,23 @@ credentials.
     sharing interface by sharing it with the email address found in
     `credentials.json` under `client_email`.
 
+
+## Local authentication
+
+Use `gcloud` to authenticate as yourself:
+
+```sh
+gcloud auth application-default login \
+    --scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/cloud-platform \
+    --project <quota project>
+```
+
+Then configure the credential file as the default:
+
+```sh
+export GOOGLE_APPLICATION_CREDENTIALS=$HOME/.config/gcloud/application_default_credentials.json
+```
+
 ## Run
 
 The most common invocation:
