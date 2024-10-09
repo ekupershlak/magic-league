@@ -83,12 +83,30 @@ existing sheet.
 
 ## (Cloud) Run
 
-As an alternative, this script can be hosted using Google Cloud Run. Deploy it
-using the following command:
+As an alternative, this script can be hosted using Google Cloud Run. 
+
+### Develop
+
+To develop locally, set an application-default credential with the requisite permissions:
+
+```
+gcloud auth application-default login \
+  --scopes https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/spreadsheets
+```
+
+Then run the function:
+
+```
+functions-framework --target=generate_pairing
+```
+
+### Deploy
+
+Deploy it using the following command:
 
 ```
 gcloud functions deploy <CloudRun-func-name> --gen2 \
-    --runtime=python38 --source=. --entry-point=generate_pairings \
+    --runtime=python311 --source=. --entry-point=generate_pairings \
     --trigger-http \
     --region=<region> --project=<project>
 ```

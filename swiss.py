@@ -283,9 +283,9 @@ def OrderPairingsByTsp(pairings: Pairings) -> Pairings:
             weights[alpha_right, beta_right] = weights[
                 alpha_left, beta_left
             ] = PairingTransitionCost(pairings[alpha], pairings[beta][::-1])
-    tour = elkai.solve_float_matrix(weights)
+    tour = elkai.DistanceMatrix(weights).solve_tsp()
     output_pairings = []
-    for node in tour[1::2]:
+    for node in tour[1:-1:2]:
         next_pairing = pairings[(node - 1) // 2]
         if node % 2 == 0:
             next_pairing = next_pairing[::-1]
